@@ -39,6 +39,7 @@ rg -n 'agent_extension|agentTargetId|AgentTarget' services apps packages
 rg -n 'standard-acp|session/new|availableModels|configOptions' services packages
 rg -n 'activeTurnId|turn\.failed|lifecycle|Planning next moves' services packages apps
 rg -n 'agentExtension|releaseIndexUrl|signingKeyId' config services docs
+rg -n 'heroImage|heroImageUrl|availableCommands|composer.*skills' services packages apps
 ```
 
 ## Validation lanes

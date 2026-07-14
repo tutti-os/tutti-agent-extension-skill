@@ -4,7 +4,7 @@
     {
       "id": 1,
       "prompt": "请把 Example CLI 作为新的标准 ACP Agent 接入 Tutti。它通过 @example/cli@1.4.2 安装，example --acp 启动，并需要独立仓库发布。请给出实现并说明验证方式。",
-      "expected_output": "Creates a declarative Agent Extension repository with an exact runtime package version, discovery/composer profiles, generic standard-ACP launch, release workflow, and package validation; avoids provider-specific Tutti branches.",
+      "expected_output": "Creates a declarative Agent Extension repository with an exact runtime package version, signed local icon and heroImage poster assets, discovery/composer profiles, generic standard-ACP launch, a self-contained release workflow, and package validation; avoids provider-specific Tutti branches.",
       "files": []
     },
     {
@@ -17,6 +17,24 @@
       "id": 3,
       "prompt": "Agent prompt 已经返回 quota error，但会话仍显示 Planning next moves。帮我修复并发布扩展。",
       "expected_output": "Separates visible error activity from authoritative lifecycle settlement, ensures terminal failure clears activeTurnId and persists a settled failed snapshot, validates the fix, then follows signed immutable release and public CDN verification steps without exposing secrets.",
+      "files": []
+    },
+    {
+      "id": 4,
+      "prompt": "新的 ACP Agent 已经能启动，但首页轮播只显示通用图标，输入 / 也没有命令或仓库里的 Skills。请检查扩展仓库和 Tutti 接入并修复。",
+      "expected_output": "Checks the installed signed manifest for a local heroImage and validates the asset, declares Skill roots and capability support in extension profiles, verifies persisted ACP availableCommands, and keeps open-provider commands visible without requiring a built-in slash policy.",
+      "files": []
+    },
+    {
+      "id": 5,
+      "prompt": "外部 ACP Agent 在 Agent 切换栏有图标，但历史会话列表每条消息前都是空白。请检查 Agent 包和 Tutti 展示链路。",
+      "expected_output": "Verifies the signed manifest contains one canonical local icon, traces it through Agent Target iconUrl and session agentTargetId, fixes every shared avatar surface to consume the Target presentation, and keeps provider-catalog icons only for legacy sessions instead of adding an extension-specific renderer branch.",
+      "files": []
+    },
+    {
+      "id": 6,
+      "prompt": "请为一个通过 uv 安装、标准 ACP stdio 通信的 Python Agent 创建独立 Tutti 接入仓库，并配置 GitHub Actions 发布所需的 AWS 资源。需要证明 initialize 和 session/new 真正可用。",
+      "expected_output": "Scaffolds a provider-independent repository with an exact package==version uv install, keeps installation and launch paths under installRoot, uses the reusable ACP probe for initialize and session/new, validates deep profile semantics, deploys repository-scoped GitHub OIDC plus private S3 and CloudFront infrastructure, and configures the Agent-specific GitHub variables without exposing credentials.",
       "files": []
     }
   ]

@@ -8,12 +8,15 @@ The Skill captures the complete workflow validated by the Gemini CLI
 integration while keeping the architecture provider-independent. It covers:
 
 - reviewing the Agent Extension trust and ownership boundaries;
-- scaffolding an independent extension repository;
+- scaffolding an independent extension repository with governance files and
+  npm, pnpm, or uv runtime installation;
 - declaring runtime discovery, capabilities, tools, composer models, and
   permission semantics;
 - integrating open provider identities and fixed Agent Targets in Tutti;
 - normalizing standard ACP models, events, errors, and lifecycle snapshots;
-- building reproducible signed releases through the reusable Tutti workflow;
+- probing real ACP `initialize` and `session/new` negotiation;
+- building reproducible signed releases with repository-owned tooling;
+- bootstrapping repository-scoped GitHub OIDC, private S3, and CloudFront;
 - publishing to S3/CloudFront and diagnosing catalog or runtime failures.
 
 ## Install

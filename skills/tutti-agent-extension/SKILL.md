@@ -28,6 +28,8 @@ Read only the references needed for the selected path:
   persistence, and GUI integration. Read before Tutti code changes.
 - `references/release-and-rollout.md`: build, signing, reusable workflow,
   S3/CloudFront, source configuration, and activation.
+- `references/aws-bootstrap.md`: create repository-scoped GitHub OIDC, S3,
+  CloudFront, and configure the generated repository variables.
 - `references/troubleshooting.md`: symptom-to-layer diagnosis and required
   evidence. Read for debugging.
 - `references/implementation-map.md`: current Tutti paths and validation
@@ -72,24 +74,46 @@ or provider-specific patch.
      --runtime-package @vendor/example-cli@1.2.3 \
      --binary example \
      --version-constraint '>=1.2.3 <2.0.0' \
+     --hero-image /path/to/example-agent-poster.jpg \
      --signing-key-id tutti-example-release-v1 \
      --release-assets-base-url https://cdn.example/tutti-agent-releases
    ```
 
-3. Edit `extension/tutti.agent.json` and referenced profiles. Keep install
+   The default runner is npm. Use `--runtime-runner pnpm` with an exact
+   `package@version`, or `--runtime-runner uv` with an exact
+   `package==version`. Set `--runtime-executable` only when the executable is
+   still below `${installRoot}` but does not use the generated runner default.
+
+3. Replace the generated manifest `icon` with the Agent's primary identity
+   artwork and provide a branded home poster through `heroImage`. The same
+   signed `icon` must project through the Agent Target to selectors,
+   conversation rows, Message Center, and mentions; do not create a second
+   provider-specific renderer icon catalog. Keep each presentation asset at or
+   below 256 KiB and package it locally so Tutti can cache verified bytes
+   instead of loading a mutable third-party URL.
+4. Edit `extension/tutti.agent.json` and referenced profiles. Keep install
    packages exactly pinned and use only the constrained `${installRoot}`
-   placeholder.
-4. Add localized display copy in the extension package. Tutti renderer copy
+   placeholder. If the Agent supports Skills, declare safe workspace/user Skill
+   roots, invocation mode, and trigger prefix in `profiles/composer.json` and
+   advertise Skill support in `profiles/capabilities.json`.
+5. Add localized display copy in the extension package. Tutti renderer copy
    still uses Tutti's i18n layer.
-5. Package into a clean directory and validate it:
+6. Package into a clean directory and validate it:
 
    ```sh
    python3 scripts/validate_agent_extension.py build/tutti-agent/package
    ```
 
-6. Verify the actual Agent locally with `--version` and an ACP initialize plus
-   session/new probe. Avoid sending a paid prompt when protocol negotiation is
-   enough.
+7. Verify the actual Agent locally with `--version` and an ACP initialize plus
+   session/new probe. The scaffold copies a reusable protocol probe:
+
+   ```sh
+   python3 scripts/probe_acp_runtime.py --cwd /path/to/project -- example --acp
+   ```
+
+   Avoid sending a paid prompt when protocol negotiation is enough. Inspect
+   the returned session model and permission state before describing composer
+   support.
 
 Use the existing `tutti-os/agent-extension-gemini` repository as a concrete
 example, not as a source of Gemini-specific host behavior.
@@ -106,7 +130,9 @@ example, not as a source of Gemini-specific host behavior.
    signature/digest/size, extract safely to staging, validate the package, and
    atomically activate it. Preserve the last verified installation offline.
 5. Register a system Agent Target whose launch reference fixes the extension
-   installation version. Use the cached signed icon and localized metadata.
+   installation version. Use the cached signed icon and localized metadata,
+   and resolve every Agent/session avatar from `agentTargetId` so open provider
+   IDs do not depend on built-in renderer catalogs.
 6. Resolve the executable through the declarative discovery profile and the
    shared command resolver. Start the generic standard ACP adapter; never add
    a provider-specific adapter for a standard ACP Agent.
@@ -116,6 +142,10 @@ example, not as a source of Gemini-specific host behavior.
    - map ACP runtime permission mode IDs to Tutti semantic permission tiers;
    - use a daemon-managed discovery CWD for no-project composer probes;
    - preserve target-authorized model selections through launch validation.
+   - persist detailed provider-advertised command catalogs and restore them in
+     composer options after renderer or daemon restarts;
+   - discover extension Skills only from the signed composer profile; open
+     extension commands remain visible even without a built-in slash policy.
 8. Normalize ACP content, tool calls, diffs, notices, visible errors, and
    interactions into canonical activity events.
 9. Stamp standard ACP turn transitions with sequenced adapter-origin lifecycle
@@ -131,17 +161,26 @@ example, not as a source of Gemini-specific host behavior.
 
 1. Build the package locally and reject scripts, executables, symlinks, unsafe
    paths, undeclared files that affect runtime, and unpinned install packages.
-2. Use `@tutti-os/agent-extension-release-tools` and the reusable workflow at
-   `tutti-os/tutti/.github/workflows/publish-tutti-agent-extension.yml`.
+2. Keep deterministic archive, signing, index, verification, and upload code
+   in the concrete Agent repository under `scripts/release/`. Generate it from
+   this Skill's scaffold or copy the bundled `assets/release-tools/` template;
+   do not depend on release implementation from the Tutti repository.
 3. Configure GitHub OIDC/AWS variables and the repository secret
    `TUTTI_AGENT_EXTENSION_SIGNING_PRIVATE_KEY`. Never copy the private key into
-   Tutti defaults.
+   Tutti defaults. For a new AWS release path, deploy the generated
+   `infra/aws/agent-extension-release-infrastructure.yaml` by following
+   `references/aws-bootstrap.md`.
 4. Publish immutable version objects before mutable indexes. Protect
    `latest.json`, `versions.json`, and `catalog.json` with ETag preconditions.
 5. Verify the public CDN bytes: index, release metadata, ZIP digest, size, and
    Ed25519 signature.
 6. Enable the Tutti source only after the CDN path and compatible runtime are
    both verified. Use a staged rollout when the source changes default UI.
+
+The Agent repository owns and tests its release workflow. The Tutti repository
+owns only host contracts, trusted source configuration, installation, and
+consumption of verified releases; publishing an Agent must never require a
+Tutti application release.
 
 ## Debug from observed state
 

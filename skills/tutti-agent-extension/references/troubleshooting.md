@@ -66,6 +66,20 @@ wizard is for built-in providers managed by that feature. An Agent Extension is
 owned by its Target lifecycle and discovery profile. Gate the wizard by Target
 kind, not by provider-name exceptions.
 
+### Typing `/` shows no commands or Skills
+
+Inspect the installed package before changing the palette. The signed
+`profiles/composer.json` must declare validated Skill roots and the capability
+profile must advertise `skills: true`. Then inspect the newest persisted
+session runtime context: `availableCommands` proves the ACP runtime advertised
+commands even if the renderer missed the startup event.
+
+If commands exist in persisted context but the palette is empty, confirm the
+GUI does not require a built-in slash policy before accepting provider command
+catalogs. Open extension providers normally have no built-in descriptor. Keep
+their advertised commands provider-native and use composer options to rehydrate
+the catalog after restarts.
+
 ### Sending creates a session but no response or loading state
 
 Trace activity context creation before runtime execution. If provider
