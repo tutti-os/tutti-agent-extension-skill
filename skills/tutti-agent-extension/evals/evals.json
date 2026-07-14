@@ -1,0 +1,23 @@
+{
+  "skill_name": "tutti-agent-extension",
+  "evals": [
+    {
+      "id": 1,
+      "prompt": "请把 Example CLI 作为新的标准 ACP Agent 接入 Tutti。它通过 @example/cli@1.4.2 安装，example --acp 启动，并需要独立仓库发布。请给出实现并说明验证方式。",
+      "expected_output": "Creates a declarative Agent Extension repository with an exact runtime package version, discovery/composer profiles, generic standard-ACP launch, release workflow, and package validation; avoids provider-specific Tutti branches.",
+      "files": []
+    },
+    {
+      "id": 2,
+      "prompt": "新 Agent 已经能显示在 Tutti 首页，但模型选择器一直 Loading，随后整个模型区域消失。请分析日志并修复。",
+      "expected_output": "Traces the Target-scoped composer flow, verifies runtime discovery CWD and ACP session/new, handles standard models plus legacy configOptions, proves the first broken boundary, and adds focused regression coverage instead of a UI fallback.",
+      "files": []
+    },
+    {
+      "id": 3,
+      "prompt": "Agent prompt 已经返回 quota error，但会话仍显示 Planning next moves。帮我修复并发布扩展。",
+      "expected_output": "Separates visible error activity from authoritative lifecycle settlement, ensures terminal failure clears activeTurnId and persists a settled failed snapshot, validates the fix, then follows signed immutable release and public CDN verification steps without exposing secrets.",
+      "files": []
+    }
+  ]
+}

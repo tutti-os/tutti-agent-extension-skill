@@ -1,0 +1,7 @@
+interface:
+  display_name: "Tutti Agent Extension"
+  short_description: "Integrate external ACP Agents with Tutti"
+  default_prompt: "Use $tutti-agent-extension to create or debug a declarative third-party Agent Extension for Tutti."
+
+policy:
+  allow_implicit_invocation: true
