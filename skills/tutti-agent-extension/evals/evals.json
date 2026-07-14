@@ -24,6 +24,12 @@
       "prompt": "新的 ACP Agent 已经能启动，但首页轮播只显示通用图标，输入 / 也没有命令或仓库里的 Skills。请检查扩展仓库和 Tutti 接入并修复。",
       "expected_output": "Checks the installed signed manifest for a local heroImage and validates the asset, declares Skill roots and capability support in extension profiles, verifies persisted ACP availableCommands, and keeps open-provider commands visible without requiring a built-in slash policy.",
       "files": []
+    },
+    {
+      "id": 5,
+      "prompt": "外部 ACP Agent 在 Agent 切换栏有图标，但历史会话列表每条消息前都是空白。请检查 Agent 包和 Tutti 展示链路。",
+      "expected_output": "Verifies the signed manifest contains one canonical local icon, traces it through Agent Target iconUrl and session agentTargetId, fixes every shared avatar surface to consume the Target presentation, and keeps provider-catalog icons only for legacy sessions instead of adding an extension-specific renderer branch.",
+      "files": []
     }
   ]
 }

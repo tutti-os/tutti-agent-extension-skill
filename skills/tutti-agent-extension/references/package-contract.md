@@ -24,7 +24,8 @@ runtime only when referenced by the signed manifest.
 Use `tutti.agent.manifest.v1` with:
 
 - stable `agentKey`, semantic `version`, display name and description;
-- an extension-local non-executable icon;
+- an extension-local non-executable primary identity icon used across Agent
+  selection, conversation rows, Message Center, and mentions;
 - an extension-local non-executable home poster referenced by `heroImage`;
 - `runtime.kind: standard-acp`;
 - an exact runtime package version for the future explicit installation path;
@@ -133,6 +134,11 @@ repository should provide one because Tutti's home carousel uses it as the
 Agent poster. Keep icon and poster bytes inside the signed package, at or below
 256 KiB each, with an image extension understood by the host. SVG assets must
 not contain scripts, event handlers, `foreignObject`, or remote references.
+
+The manifest has one canonical `icon` field. Do not add separate session,
+message, mention, or provider-rail icon fields: the host projects the verified
+asset through the Agent Target `iconUrl`, and each surface resolves it by
+`agentTargetId`. Provider-catalog artwork is only for legacy built-in sessions.
 
 Compose the poster so its identity survives the carousel's perspective and
 downscaling: use a clear focal subject, strong contrast, and safe margins. Do

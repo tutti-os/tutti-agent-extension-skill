@@ -77,10 +77,13 @@ or provider-specific patch.
      --release-assets-base-url https://cdn.example/tutti-agent-releases
    ```
 
-3. Replace the generated icon and provide a branded home poster through the
-   manifest `heroImage` asset. Keep each presentation asset at or below 256 KiB;
-   package it locally so Tutti can cache verified bytes instead of loading a
-   mutable third-party URL.
+3. Replace the generated manifest `icon` with the Agent's primary identity
+   artwork and provide a branded home poster through `heroImage`. The same
+   signed `icon` must project through the Agent Target to selectors,
+   conversation rows, Message Center, and mentions; do not create a second
+   provider-specific renderer icon catalog. Keep each presentation asset at or
+   below 256 KiB and package it locally so Tutti can cache verified bytes
+   instead of loading a mutable third-party URL.
 4. Edit `extension/tutti.agent.json` and referenced profiles. Keep install
    packages exactly pinned and use only the constrained `${installRoot}`
    placeholder. If the Agent supports Skills, declare safe workspace/user Skill
@@ -113,7 +116,9 @@ example, not as a source of Gemini-specific host behavior.
    signature/digest/size, extract safely to staging, validate the package, and
    atomically activate it. Preserve the last verified installation offline.
 5. Register a system Agent Target whose launch reference fixes the extension
-   installation version. Use the cached signed icon and localized metadata.
+   installation version. Use the cached signed icon and localized metadata,
+   and resolve every Agent/session avatar from `agentTargetId` so open provider
+   IDs do not depend on built-in renderer catalogs.
 6. Resolve the executable through the declarative discovery profile and the
    shared command resolver. Start the generic standard ACP adapter; never add
    a provider-specific adapter for a standard ACP Agent.

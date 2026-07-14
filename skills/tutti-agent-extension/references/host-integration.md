@@ -29,8 +29,11 @@ At daemon startup or refresh:
 6. Register a system Target such as `extension:example` with an
    `agent_extension` launch ref fixed to the verified installation.
 7. Cache the signed icon and optional home poster as safe data URLs; project
-   them through Target `iconUrl` and `heroImageUrl`. The renderer does not add
-   provider-specific asset branches or load mutable third-party image URLs.
+   them through Target `iconUrl` and `heroImageUrl`. Agent selection,
+   conversation rows, Message Center, and mentions resolve the icon from each
+   session's `agentTargetId`. The renderer does not add extension-specific icon
+   catalogs or provider branches; provider-catalog icons are only a legacy
+   compatibility path when a session has no resolvable Target.
 
 Disabled sources make no network request and remove their system Target.
 Failed refreshes retain a previously verified active installation.
