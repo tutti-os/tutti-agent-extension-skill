@@ -1,84 +1,96 @@
 # Release and rollout
 
-## Repository release contract
+## Ownership boundary
 
-The extension repository owns source metadata and calls Tutti's reusable
-release workflow. Keep the caller minimal so signing, archive validation, index
-updates, and publication rules remain centralized.
+Each concrete Agent Extension repository owns its complete release
+implementation:
 
-```yaml
-name: Release
-
-on:
-  workflow_dispatch:
-    inputs:
-      version:
-        description: Immutable extension version
-        required: true
-
-permissions:
-  contents: read
-  id-token: write
-
-jobs:
-  publish:
-    uses: tutti-os/tutti/.github/workflows/publish-tutti-agent-extension.yml@main
-    with:
-      agent_key: example
-      version: ${{ inputs.version }}
-      min_tutti_version: "0.0.0"
-      package_command: pnpm package:tutti-agent
-      package_dir: build/tutti-agent/package
-      signing_key_id: tutti-example-release-v1
-      aws_region: ${{ vars.TUTTI_APP_RELEASES_AWS_REGION }}
-      aws_role_arn: ${{ vars.TUTTI_APP_RELEASES_AWS_ROLE_ARN }}
-      s3_bucket: ${{ vars.TUTTI_APP_RELEASES_S3_BUCKET }}
-      s3_prefix: tutti-agent-releases
-      release_assets_base_url: https://cdn.example/tutti-agent-releases
-      cloudfront_distribution_id: ${{ vars.TUTTI_AGENT_RELEASES_CLOUDFRONT_DISTRIBUTION_ID }}
-    secrets:
-      signing_private_key: ${{ secrets.TUTTI_AGENT_EXTENSION_SIGNING_PRIVATE_KEY }}
+```text
+agent-extension-example/
+  extension/
+  scripts/package.mjs
+  scripts/release/bin/
+  scripts/release/lib/
+  scripts/release/schemas/
+  scripts/release/test/
+  .github/workflows/release.yml
 ```
 
-The package command must build a clean directory; never publish a
-repository-root ZIP. The reusable workflow owns the centralized release tools.
+Do not call or check out release scripts from the Tutti repository. Tutti owns
+host-side schemas, trusted source configuration, installation, and verification
+of published bytes. It does not build or upload third-party Agent releases.
 
-## Required GitHub and AWS configuration
+Use `scripts/scaffold_agent_extension.py` to create the self-contained layout.
+For an existing Agent repository, copy this Skill's
+`assets/release-tools/` directory to `scripts/release/` and adapt the bundled
+workflow template. Keep release code versioned with the manifest it publishes.
 
-Use GitHub OIDC for AWS access. Configure the variables expected by Tutti's
-reusable workflow, including the AWS role, region, release bucket, CloudFront
-distribution, and public release base URL. Store only the Ed25519 private key
-in the repository secret `TUTTI_AGENT_EXTENSION_SIGNING_PRIVATE_KEY`.
+## Repository release contract
 
-The public key and `signingKeyId` belong in Tutti's trusted-source defaults.
-Private keys must not appear in source, workflow input, artifacts, shell trace,
-or logs.
+The repository workflow must:
+
+1. Check out only the concrete Agent repository.
+2. Install its pinned dependencies with a frozen lockfile.
+3. Build a clean declarative package directory.
+4. Run the repository-owned release builder.
+5. Upload immutable version objects with `If-None-Match: *`.
+6. Update mutable indexes using the previously observed ETag.
+7. Invalidate only mutable CDN paths.
+
+Never publish a repository-root ZIP. The artifact may contain only the
+manifest, profiles, locales, documentation, and image assets accepted by the
+package validator. Runtime binaries, executable files, scripts, symlinks, and
+dynamically loaded renderer code are forbidden.
+
+Inspect the packaged manifest and archive before signing: `icon.src` and
+`heroImage.src` must resolve to the intended local presentation assets. A
+release that updates metadata but omits the poster bytes will keep the home
+carousel on a generic or stale visual even when publication succeeds.
+
+The bundled workflow expects these GitHub repository variables:
+
+- `TUTTI_APP_RELEASES_AWS_REGION`
+- `TUTTI_APP_RELEASES_AWS_ROLE_ARN`
+- `TUTTI_APP_RELEASES_S3_BUCKET`
+- `TUTTI_AGENT_RELEASES_CLOUDFRONT_DISTRIBUTION_ID` when invalidation is used
+
+Store the Ed25519 private key only in the repository secret
+`TUTTI_AGENT_EXTENSION_SIGNING_PRIVATE_KEY`. Use GitHub OIDC for AWS access.
+Never commit signing private keys, AWS credentials, or access tokens.
+
+The corresponding public key and `signingKeyId` belong in Tutti's trusted
+source configuration. Private keys must not appear in Tutti defaults, workflow
+inputs, artifacts, shell traces, or logs.
 
 ## Publication ordering
 
 Publish in this order:
 
-1. Build and validate the declarative package.
-2. Create the deterministic ZIP, digest, byte size, and signed release record.
+1. Validate the declarative package.
+2. Create the reproducible ZIP, digest, byte size, and signed release record.
 3. Upload versioned immutable objects.
-4. Conditionally update `latest.json` and `versions.json` with the observed
-   ETag.
-5. Conditionally update the global `catalog.json` entry.
+4. Conditionally update `versions.json` from the observed ETag.
+5. Update `latest.json` from the active record.
 6. Invalidate only mutable CloudFront paths when required.
 
 Never overwrite an existing version object. Mutable index writers must fail on
 an ETag conflict and retry from freshly read state instead of discarding a
 concurrent release.
 
-## Public verification
+## Local release verification
 
-Verify the public CDN, not only S3:
+Before using AWS, generate an ephemeral Ed25519 key pair and run the repository
+release tests. Build a local signed release with a test key and verify the
+artifact, digest, size, manifest identity, and signature. Do not reuse the
+production private key for local tests.
+
+After publication, verify the public CDN rather than only S3:
 
 ```sh
 curl -fsS https://cdn.example/agents/example/versions.json
 curl -fsS https://cdn.example/agents/example/1.0.0/release.json
 curl -fsSLo /tmp/example-1.0.0.zip \
-  https://cdn.example/agents/example/1.0.0/package.zip
+  https://cdn.example/agents/example/1.0.0/example-1.0.0.zip
 shasum -a 256 /tmp/example-1.0.0.zip
 ```
 
@@ -96,6 +108,5 @@ Keep a new source disabled until:
 - Target registration and composer discovery pass locally;
 - rollout limitations, authentication, and quota behavior are documented.
 
-Enable by defaults/configuration only after those checks. Preserve the last
-verified active installation so transient network failure does not remove an
-already working Agent.
+Enable the source only after those checks. Preserve the last verified active
+installation so transient network failure does not remove a working Agent.

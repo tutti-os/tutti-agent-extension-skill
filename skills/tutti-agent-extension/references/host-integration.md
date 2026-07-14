@@ -28,8 +28,9 @@ At daemon startup or refresh:
 5. Atomically switch `active.json`.
 6. Register a system Target such as `extension:example` with an
    `agent_extension` launch ref fixed to the verified installation.
-7. Cache the signed icon as a safe data URL; the renderer does not add a new
-   icon branch.
+7. Cache the signed icon and optional home poster as safe data URLs; project
+   them through Target `iconUrl` and `heroImageUrl`. The renderer does not add
+   provider-specific asset branches or load mutable third-party image URLs.
 
 Disabled sources make no network request and remove their system Target.
 Failed refreshes retain a previously verified active installation.
@@ -61,10 +62,17 @@ For standard ACP:
 - `session/set_model` applies model changes when the models API is present;
 - ACP modes map through signed semantic permission mappings;
 - hidden discovery sessions use a daemon-managed CWD.
+- provider-advertised commands are persisted in detailed runtime context and
+  restored through composer options when a transient engine event was missed;
+- signed extension Skill roots drive discovery for open providers.
 
 The selected extension model must survive service validation, runtime
 preparation, and start. Built-in model catalogs must not erase or validate an
 authoritative extension model.
+
+An open extension normally has no built-in slash-command policy. Treat the ACP
+command catalog as a runtime capability: keep it visible and provider-native
+instead of discarding it when policy metadata is absent.
 
 ## Activity and lifecycle
 

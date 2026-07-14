@@ -6,6 +6,7 @@ from __future__ import annotations
 import argparse
 import json
 import re
+import shutil
 from pathlib import Path
 from typing import Any
 
@@ -16,6 +17,9 @@ EXACT_NPM = re.compile(
     r"^(?:@[a-z0-9][a-z0-9._-]*/)?[a-z0-9][a-z0-9._-]*@"
     r"(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)(?:-[0-9A-Za-z.-]+)?$"
 )
+ASSETS = Path(__file__).resolve().parents[1] / "assets"
+PRESENTATION_ASSET_SUFFIXES = {".gif", ".jpeg", ".jpg", ".png", ".svg", ".webp"}
+PRESENTATION_ASSET_LIMIT = 256 << 10
 
 
 def dump(value: Any) -> str:
@@ -26,6 +30,10 @@ def write(root: Path, relative: str, content: str) -> None:
     target = root / relative
     target.parent.mkdir(parents=True, exist_ok=True)
     target.write_text(content, encoding="utf-8")
+
+
+def hero_image_asset_path(args: argparse.Namespace) -> str:
+    return f"assets/hero-image{args.hero_image.suffix.lower()}"
 
 
 def validate_args(args: argparse.Namespace) -> None:
@@ -45,6 +53,12 @@ def validate_args(args: argparse.Namespace) -> None:
         raise SystemExit("--signing-key-id contains unsupported characters")
     if not re.fullmatch(r"https://[^\s]+", args.release_assets_base_url):
         raise SystemExit("--release-assets-base-url must be an HTTPS URL without whitespace")
+    if not args.hero_image.is_file():
+        raise SystemExit(f"--hero-image must be an existing file: {args.hero_image}")
+    if args.hero_image.suffix.lower() not in PRESENTATION_ASSET_SUFFIXES:
+        raise SystemExit("--hero-image must be GIF, JPEG, PNG, SVG, or WebP")
+    if args.hero_image.stat().st_size > PRESENTATION_ASSET_LIMIT:
+        raise SystemExit("--hero-image must not exceed 256 KiB")
     if args.output.exists() and any(args.output.iterdir()):
         raise SystemExit(f"output directory is not empty: {args.output}")
 
@@ -57,6 +71,7 @@ def manifest(args: argparse.Namespace) -> dict[str, Any]:
         "name": args.display_name,
         "description": args.description,
         "icon": {"type": "asset", "src": "assets/icon.svg"},
+        "heroImage": {"type": "asset", "src": hero_image_asset_path(args)},
         "runtime": {
             "kind": "standard-acp",
             "install": {
@@ -100,7 +115,14 @@ def create(args: argparse.Namespace) -> None:
         f"# {args.display_name} Agent Extension for Tutti\n\n"
         f"Declarative Tutti integration for `{args.runtime_package}` through standard ACP.\n\n"
         "## Validate\n\n```sh\npnpm install --frozen-lockfile\npnpm check\n"
-        "pnpm package:tutti-agent\n```\n",
+        "pnpm package:tutti-agent\n```\n\n"
+        "The signed manifest references the Agent home poster through `heroImage`. "
+        "Keep the packaged image at or below 256 KiB and replace it deliberately "
+        "when branding changes.\n\n"
+        "## Release\n\nThe repository-owned `.github/workflows/release.yml` builds, "
+        "signs, and uploads immutable releases using `scripts/release/`. Configure "
+        "the documented GitHub OIDC/AWS variables and the "
+        "`TUTTI_AGENT_EXTENSION_SIGNING_PRIVATE_KEY` repository secret before dispatch.\n",
     )
     write(
         root,
@@ -113,9 +135,13 @@ def create(args: argparse.Namespace) -> None:
                 "type": "module",
                 "engines": {"node": ">=24"},
                 "scripts": {
-                    "check": "node scripts/check.mjs",
+                    "check": (
+                        "node scripts/check.mjs && "
+                        "node --test scripts/release/test/*.test.mjs"
+                    ),
                     "package:tutti-agent": "node scripts/package.mjs",
                 },
+                "dependencies": {"semver": "7.8.0"},
                 "packageManager": "pnpm@10.11.0",
             }
         ),
@@ -123,8 +149,13 @@ def create(args: argparse.Namespace) -> None:
     write(
         root,
         "pnpm-lock.yaml",
-        "lockfileVersion: '9.0'\n\nsettings:\n  autoInstallPeers: true\n"
-        "  excludeLinksFromLockfile: false\n\nimporters:\n\n  .: {}\n",
+        'lockfileVersion: "9.0"\n\nsettings:\n  autoInstallPeers: true\n'
+        "  excludeLinksFromLockfile: false\n\nimporters:\n  .:\n"
+        "    dependencies:\n      semver:\n        specifier: 7.8.0\n"
+        "        version: 7.8.0\n\npackages:\n  semver@7.8.0:\n"
+        "    resolution:\n      {\n        integrity: sha512-AcM7dV/5ul4EekoQ29Agm5vri8JNqRyj39o0qpX6vDF2GZrtutZl5RwgD1XnZjiTAfncsJhMI48QQH3sN87YNA==,\n      }\n"
+        '    engines: { node: ">=10" }\n    hasBin: true\n\nsnapshots:\n'
+        "  semver@7.8.0: {}\n",
     )
     write(root, "extension/tutti.agent.json", dump(manifest(args)))
     write(
@@ -211,6 +242,9 @@ def create(args: argparse.Namespace) -> None:
         '<path d="M18 32h28M32 18v28" stroke="#fff" stroke-width="6" stroke-linecap="round"/>'
         "</svg>\n",
     )
+    hero_target = root / "extension" / hero_image_asset_path(args)
+    hero_target.parent.mkdir(parents=True, exist_ok=True)
+    hero_target.write_bytes(args.hero_image.read_bytes())
     write(
         root,
         "scripts/check.mjs",
@@ -259,30 +293,16 @@ def create(args: argparse.Namespace) -> None:
         "          cache: pnpm\n      - run: pnpm install --frozen-lockfile\n"
         "      - run: pnpm check\n",
     )
-    write(
-        root,
-        ".github/workflows/release.yml",
-        "name: Publish Agent Extension\non:\n  workflow_dispatch:\n    inputs:\n"
-        "      version:\n        description: Immutable extension version\n        required: true\n"
-        f"        default: '{args.extension_version}'\npermissions:\n  contents: read\n"
-        "  id-token: write\njobs:\n  publish:\n"
-        "    uses: tutti-os/tutti/.github/workflows/publish-tutti-agent-extension.yml@main\n"
-        "    with:\n"
-        f"      agent_key: {args.agent_key}\n"
-        "      version: ${{ inputs.version }}\n"
-        "      min_tutti_version: '0.0.0'\n"
-        "      package_command: pnpm package:tutti-agent\n"
-        "      package_dir: build/tutti-agent/package\n"
-        f"      signing_key_id: {args.signing_key_id}\n"
-        "      aws_region: ${{ vars.TUTTI_APP_RELEASES_AWS_REGION }}\n"
-        "      aws_role_arn: ${{ vars.TUTTI_APP_RELEASES_AWS_ROLE_ARN }}\n"
-        "      s3_bucket: ${{ vars.TUTTI_APP_RELEASES_S3_BUCKET }}\n"
-        "      s3_prefix: tutti-agent-releases\n"
-        f"      release_assets_base_url: {args.release_assets_base_url}\n"
-        "      cloudfront_distribution_id: ${{ vars.TUTTI_AGENT_RELEASES_CLOUDFRONT_DISTRIBUTION_ID }}\n"
-        "    secrets:\n"
-        "      signing_private_key: ${{ secrets.TUTTI_AGENT_EXTENSION_SIGNING_PRIVATE_KEY }}\n",
-    )
+    shutil.copytree(ASSETS / "release-tools", root / "scripts/release")
+    release_workflow = (ASSETS / "workflows/release.yml").read_text(encoding="utf-8")
+    for token, value in {
+        "__AGENT_KEY__": args.agent_key,
+        "__EXTENSION_VERSION__": args.extension_version,
+        "__SIGNING_KEY_ID__": args.signing_key_id,
+        "__RELEASE_ASSETS_BASE_URL__": args.release_assets_base_url,
+    }.items():
+        release_workflow = release_workflow.replace(token, value)
+    write(root, ".github/workflows/release.yml", release_workflow)
     write(
         root,
         "extension/AGENTS.md",
@@ -304,6 +324,7 @@ def main() -> int:
     parser.add_argument("--version-constraint", required=True)
     parser.add_argument("--signing-key-id", required=True)
     parser.add_argument("--release-assets-base-url", required=True)
+    parser.add_argument("--hero-image", required=True, type=Path)
     parser.add_argument("--description", default="External Agent for Tutti through standard ACP")
     parser.add_argument("--launch-arg", action="append", default=["--acp"])
     args = parser.parse_args()

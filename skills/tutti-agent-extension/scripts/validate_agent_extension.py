@@ -5,6 +5,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import mimetypes
 import os
 import re
 import stat
@@ -24,6 +25,7 @@ EXACT_NPM_PACKAGE = re.compile(
     r"^(?:@[a-z0-9][a-z0-9._-]*/)?[a-z0-9][a-z0-9._-]*@"
     r"(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)(?:-[0-9A-Za-z.-]+)?$"
 )
+PRESENTATION_ASSET_LIMIT = 256 << 10
 
 
 class ValidationError(Exception):
@@ -59,6 +61,37 @@ def resolve_reference(root: Path, value: Any, field: str) -> Path:
     if not resolved.is_file():
         raise ValidationError(f"{field} does not exist: {reference}")
     return resolved
+
+
+def validate_presentation_asset(root: Path, descriptor: Any, field: str) -> Path:
+    if not isinstance(descriptor, dict) or descriptor.get("type") != "asset":
+        raise ValidationError(f"{field} must be an extension asset")
+    path = resolve_reference(root, descriptor.get("src"), f"{field}.src")
+    if path.stat().st_size > PRESENTATION_ASSET_LIMIT:
+        raise ValidationError(
+            f"{field} exceeds the 256 KiB presentation asset limit"
+        )
+    content_type, _ = mimetypes.guess_type(path.name)
+    if not content_type or not content_type.startswith("image/"):
+        raise ValidationError(f"{field} must use a supported image file type")
+    if path.suffix.lower() == ".svg":
+        try:
+            lower = path.read_text(encoding="utf-8").lower()
+        except UnicodeDecodeError as exc:
+            raise ValidationError(f"{field} SVG must be valid UTF-8") from exc
+        forbidden = (
+            "<script",
+            "<foreignobject",
+            "javascript:",
+            'href="http',
+            "href='http",
+            "url(http",
+            " onload=",
+            " onclick=",
+        )
+        if any(token in lower for token in forbidden):
+            raise ValidationError(f"{field} SVG contains active or remote content")
+    return path
 
 
 def check_package_tree(root: Path) -> None:
@@ -120,10 +153,8 @@ def validate(root: Path) -> None:
         raise ValidationError("runtime must be an object")
     check_install(runtime)
 
-    icon = manifest.get("icon")
-    if not isinstance(icon, dict) or icon.get("type") != "asset":
-        raise ValidationError("icon must be an extension asset")
-    resolve_reference(root, icon.get("src"), "icon.src")
+    validate_presentation_asset(root, manifest.get("icon"), "icon")
+    validate_presentation_asset(root, manifest.get("heroImage"), "heroImage")
 
     profiles = manifest.get("profiles")
     if not isinstance(profiles, dict):
