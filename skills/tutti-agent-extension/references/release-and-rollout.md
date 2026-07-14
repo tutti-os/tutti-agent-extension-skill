@@ -49,14 +49,20 @@ carousel on a generic or stale visual even when publication succeeds.
 
 The bundled workflow expects these GitHub repository variables:
 
-- `TUTTI_APP_RELEASES_AWS_REGION`
-- `TUTTI_APP_RELEASES_AWS_ROLE_ARN`
-- `TUTTI_APP_RELEASES_S3_BUCKET`
+- `TUTTI_AGENT_RELEASES_AWS_REGION`
+- `TUTTI_AGENT_RELEASES_AWS_ROLE_ARN`
+- `TUTTI_AGENT_RELEASES_S3_BUCKET`
 - `TUTTI_AGENT_RELEASES_CLOUDFRONT_DISTRIBUTION_ID` when invalidation is used
 
 Store the Ed25519 private key only in the repository secret
 `TUTTI_AGENT_EXTENSION_SIGNING_PRIVATE_KEY`. Use GitHub OIDC for AWS access.
 Never commit signing private keys, AWS credentials, or access tokens.
+
+For a new repository, follow `aws-bootstrap.md`. The scaffold includes a
+CloudFormation template that creates a private, versioned release bucket,
+CloudFront origin access control, and a GitHub OIDC role restricted to the
+repository's `main` branch. If the account already has the GitHub OIDC provider,
+pass its ARN instead of attempting to create a duplicate provider.
 
 The corresponding public key and `signingKeyId` belong in Tutti's trusted
 source configuration. Private keys must not appear in Tutti defaults, workflow

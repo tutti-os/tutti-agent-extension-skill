@@ -30,6 +30,12 @@
       "prompt": "外部 ACP Agent 在 Agent 切换栏有图标，但历史会话列表每条消息前都是空白。请检查 Agent 包和 Tutti 展示链路。",
       "expected_output": "Verifies the signed manifest contains one canonical local icon, traces it through Agent Target iconUrl and session agentTargetId, fixes every shared avatar surface to consume the Target presentation, and keeps provider-catalog icons only for legacy sessions instead of adding an extension-specific renderer branch.",
       "files": []
+    },
+    {
+      "id": 6,
+      "prompt": "请为一个通过 uv 安装、标准 ACP stdio 通信的 Python Agent 创建独立 Tutti 接入仓库，并配置 GitHub Actions 发布所需的 AWS 资源。需要证明 initialize 和 session/new 真正可用。",
+      "expected_output": "Scaffolds a provider-independent repository with an exact package==version uv install, keeps installation and launch paths under installRoot, uses the reusable ACP probe for initialize and session/new, validates deep profile semantics, deploys repository-scoped GitHub OIDC plus private S3 and CloudFront infrastructure, and configures the Agent-specific GitHub variables without exposing credentials.",
+      "files": []
     }
   ]
 }

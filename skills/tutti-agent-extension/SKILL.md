@@ -28,6 +28,8 @@ Read only the references needed for the selected path:
   persistence, and GUI integration. Read before Tutti code changes.
 - `references/release-and-rollout.md`: build, signing, reusable workflow,
   S3/CloudFront, source configuration, and activation.
+- `references/aws-bootstrap.md`: create repository-scoped GitHub OIDC, S3,
+  CloudFront, and configure the generated repository variables.
 - `references/troubleshooting.md`: symptom-to-layer diagnosis and required
   evidence. Read for debugging.
 - `references/implementation-map.md`: current Tutti paths and validation
@@ -77,6 +79,11 @@ or provider-specific patch.
      --release-assets-base-url https://cdn.example/tutti-agent-releases
    ```
 
+   The default runner is npm. Use `--runtime-runner pnpm` with an exact
+   `package@version`, or `--runtime-runner uv` with an exact
+   `package==version`. Set `--runtime-executable` only when the executable is
+   still below `${installRoot}` but does not use the generated runner default.
+
 3. Replace the generated manifest `icon` with the Agent's primary identity
    artwork and provide a branded home poster through `heroImage`. The same
    signed `icon` must project through the Agent Target to selectors,
@@ -98,8 +105,15 @@ or provider-specific patch.
    ```
 
 7. Verify the actual Agent locally with `--version` and an ACP initialize plus
-   session/new probe. Avoid sending a paid prompt when protocol negotiation is
-   enough.
+   session/new probe. The scaffold copies a reusable protocol probe:
+
+   ```sh
+   python3 scripts/probe_acp_runtime.py --cwd /path/to/project -- example --acp
+   ```
+
+   Avoid sending a paid prompt when protocol negotiation is enough. Inspect
+   the returned session model and permission state before describing composer
+   support.
 
 Use the existing `tutti-os/agent-extension-gemini` repository as a concrete
 example, not as a source of Gemini-specific host behavior.
@@ -153,7 +167,9 @@ example, not as a source of Gemini-specific host behavior.
    do not depend on release implementation from the Tutti repository.
 3. Configure GitHub OIDC/AWS variables and the repository secret
    `TUTTI_AGENT_EXTENSION_SIGNING_PRIVATE_KEY`. Never copy the private key into
-   Tutti defaults.
+   Tutti defaults. For a new AWS release path, deploy the generated
+   `infra/aws/agent-extension-release-infrastructure.yaml` by following
+   `references/aws-bootstrap.md`.
 4. Publish immutable version objects before mutable indexes. Protect
    `latest.json`, `versions.json`, and `catalog.json` with ETag preconditions.
 5. Verify the public CDN bytes: index, release metadata, ZIP digest, size, and

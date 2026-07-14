@@ -41,13 +41,18 @@ Example:
   "version": "1.0.0",
   "name": "Example CLI",
   "description": "Example CLI through the Agent Client Protocol",
-  "icon": {"type": "asset", "src": "assets/icon.svg"},
-  "heroImage": {"type": "asset", "src": "assets/hero-image.jpg"},
+  "icon": { "type": "asset", "src": "assets/icon.svg" },
+  "heroImage": { "type": "asset", "src": "assets/hero-image.jpg" },
   "runtime": {
     "kind": "standard-acp",
     "install": {
       "runner": "npm",
-      "args": ["install", "--prefix", "${installRoot}", "@vendor/example-cli@1.2.3"]
+      "args": [
+        "install",
+        "--prefix",
+        "${installRoot}",
+        "@vendor/example-cli@1.2.3"
+      ]
     },
     "launch": {
       "executable": "${installRoot}/node_modules/.bin/example",
@@ -63,8 +68,27 @@ Example:
   "localizationInfo": {
     "defaultLocale": "en",
     "defaultFile": "locales/en.json",
-    "additionalLocales": [{"locale": "zh-CN", "file": "locales/zh-CN.json"}]
+    "additionalLocales": [{ "locale": "zh-CN", "file": "locales/zh-CN.json" }]
   }
+}
+```
+
+The install runner may be `npm`, `pnpm`, or `uv`. npm and pnpm packages use an
+exact `package@version`; uv packages use an exact `package==version`. A
+generated install must remain under `${installRoot}`, and the launch executable
+must also resolve below that root. Examples:
+
+```json
+{
+  "runner": "pnpm",
+  "args": ["add", "--dir", "${installRoot}", "example-cli@1.2.3"]
+}
+```
+
+```json
+{
+  "runner": "uv",
+  "args": ["pip", "install", "--target", "${installRoot}", "example-cli==1.2.3"]
 }
 ```
 
@@ -76,12 +100,14 @@ bounded ACP initialize probe. Do not declare scripts or filesystem crawlers.
 ```json
 {
   "schemaVersion": "tutti.agent.discovery.v1",
-  "candidates": [{
-    "binaryNames": ["example"],
-    "version": {"args": ["--version"], "constraint": ">=1.2.3 <2.0.0"},
-    "launchArgs": ["--acp"],
-    "probe": {"kind": "acp-initialize", "timeoutMs": 5000}
-  }]
+  "candidates": [
+    {
+      "binaryNames": ["example"],
+      "version": { "args": ["--version"], "constraint": ">=1.2.3 <2.0.0" },
+      "launchArgs": ["--acp"],
+      "probe": { "kind": "acp-initialize", "timeoutMs": 5000 }
+    }
+  ]
 }
 ```
 
@@ -92,13 +118,13 @@ Prefer runtime-owned catalogs:
 ```json
 {
   "schemaVersion": "tutti.agent.composer.v1",
-  "model": {"source": "acp-session-models"},
-  "permission": {"source": "acp-session-modes"},
+  "model": { "source": "acp-session-models" },
+  "permission": { "source": "acp-session-modes" },
   "permissionModes": [
-    {"runtimeId": "default", "semantic": "ask-before-write"},
-    {"runtimeId": "auto_edit", "semantic": "accept-edits"},
-    {"runtimeId": "yolo", "semantic": "full-access"},
-    {"runtimeId": "plan", "semantic": "read-only"}
+    { "runtimeId": "default", "semantic": "ask-before-write" },
+    { "runtimeId": "auto_edit", "semantic": "accept-edits" },
+    { "runtimeId": "yolo", "semantic": "full-access" },
+    { "runtimeId": "plan", "semantic": "read-only" }
   ]
 }
 ```
@@ -115,10 +141,10 @@ of adding a provider branch to Tutti:
     "invocation": "textTrigger",
     "triggerPrefix": "/",
     "roots": [
-      {"scope": "workspace", "path": ".example/skills"},
-      {"scope": "workspace", "path": ".agents/skills"},
-      {"scope": "user", "path": ".example/skills"},
-      {"scope": "user", "path": ".agents/skills"}
+      { "scope": "workspace", "path": ".example/skills" },
+      { "scope": "workspace", "path": ".agents/skills" },
+      { "scope": "user", "path": ".example/skills" },
+      { "scope": "user", "path": ".agents/skills" }
     ]
   }
 }
@@ -161,7 +187,11 @@ semantics from provider names.
   SVG content is passive and self-contained.
 - No symlinks, executable non-directory files, hidden runtime scripts, or Agent
   executables.
-- Runtime npm package versions are exact, not tags or ranges.
+- Runtime npm, pnpm, and uv package versions are exact, not tags or ranges.
+- Discovery has at least one bounded `acp-initialize` candidate with safe
+  binary names and explicit launch/version arguments.
+- Composer model and permission sources use ACP session state; Skill roots are
+  safe relative workspace/user paths and agree with the capability profile.
 - JSON files parse and locale files contain the required presentation keys.
 - The packaged directory is produced from source, not published by zipping the
   repository root.

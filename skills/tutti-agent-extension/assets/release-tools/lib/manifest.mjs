@@ -126,17 +126,23 @@ function validateInstall(install) {
   }
   if (install.runner === "npm" || install.runner === "pnpm") {
     const packageArguments = install.args.filter((argument) =>
-      argument.startsWith("@")
-    );
-    if (
-      packageArguments.length !== 1 ||
-      !/^@[a-z0-9._-]+\/[a-z0-9._-]+@[0-9]+\.[0-9]+\.[0-9]+(?:-[0-9A-Za-z.-]+)?$/u.test(
-        packageArguments[0]
+      /^(?:@[a-z0-9._-]+\/)?[a-z0-9._-]+@[0-9]+\.[0-9]+\.[0-9]+(?:-[0-9A-Za-z.-]+)?$/u.test(
+        argument
       )
-    ) {
+    );
+    if (packageArguments.length !== 1) {
       throw new Error(
-        "npm/pnpm install must contain one exact scoped package version"
+        "npm/pnpm install must contain one exact package@version"
       );
+    }
+  } else {
+    const packageArguments = install.args.filter((argument) =>
+      /^[A-Za-z0-9][A-Za-z0-9._-]*==[0-9]+\.[0-9]+\.[0-9]+(?:[A-Za-z0-9._+-]*)?$/u.test(
+        argument
+      )
+    );
+    if (packageArguments.length !== 1) {
+      throw new Error("uv install must contain one exact package==version");
     }
   }
 }

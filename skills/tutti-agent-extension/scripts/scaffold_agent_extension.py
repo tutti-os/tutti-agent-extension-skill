@@ -17,6 +17,10 @@ EXACT_NPM = re.compile(
     r"^(?:@[a-z0-9][a-z0-9._-]*/)?[a-z0-9][a-z0-9._-]*@"
     r"(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)(?:-[0-9A-Za-z.-]+)?$"
 )
+EXACT_UV = re.compile(
+    r"^[A-Za-z0-9][A-Za-z0-9._-]*=="
+    r"(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)(?:[A-Za-z0-9._+-]*)?$"
+)
 ASSETS = Path(__file__).resolve().parents[1] / "assets"
 PRESENTATION_ASSET_SUFFIXES = {".gif", ".jpeg", ".jpg", ".png", ".svg", ".webp"}
 PRESENTATION_ASSET_LIMIT = 256 << 10
@@ -36,6 +40,22 @@ def hero_image_asset_path(args: argparse.Namespace) -> str:
     return f"assets/hero-image{args.hero_image.suffix.lower()}"
 
 
+def runtime_install_args(args: argparse.Namespace) -> list[str]:
+    if args.runtime_runner == "npm":
+        return ["install", "--prefix", "${installRoot}", args.runtime_package]
+    if args.runtime_runner == "pnpm":
+        return ["add", "--dir", "${installRoot}", args.runtime_package]
+    return ["pip", "install", "--target", "${installRoot}", args.runtime_package]
+
+
+def runtime_executable(args: argparse.Namespace) -> str:
+    if args.runtime_executable:
+        return args.runtime_executable
+    if args.runtime_runner in {"npm", "pnpm"}:
+        return f"${{installRoot}}/node_modules/.bin/{args.binary}"
+    return f"${{installRoot}}/bin/{args.binary}"
+
+
 def validate_args(args: argparse.Namespace) -> None:
     if not KEY.fullmatch(args.agent_key):
         raise SystemExit("--agent-key must match ^[a-z][a-z0-9-]*$")
@@ -45,14 +65,23 @@ def validate_args(args: argparse.Namespace) -> None:
         raise SystemExit("--provider must use the open acp:<key> form")
     if not SEMVER.fullmatch(args.extension_version):
         raise SystemExit("--extension-version must be an exact semantic version")
-    if not EXACT_NPM.fullmatch(args.runtime_package):
-        raise SystemExit("--runtime-package must be an exact npm package@version")
+    if args.runtime_runner in {"npm", "pnpm"} and not EXACT_NPM.fullmatch(
+        args.runtime_package
+    ):
+        raise SystemExit("--runtime-package must be an exact npm/pnpm package@version")
+    if args.runtime_runner == "uv" and not EXACT_UV.fullmatch(args.runtime_package):
+        raise SystemExit("--runtime-package must be an exact Python package==version")
     if not BINARY.fullmatch(args.binary):
         raise SystemExit("--binary must be a binary name without a path")
+    executable = runtime_executable(args)
+    if not executable.startswith("${installRoot}/") or ".." in Path(executable).parts:
+        raise SystemExit("--runtime-executable must stay under ${installRoot}")
     if not BINARY.fullmatch(args.signing_key_id):
         raise SystemExit("--signing-key-id contains unsupported characters")
     if not re.fullmatch(r"https://[^\s]+", args.release_assets_base_url):
-        raise SystemExit("--release-assets-base-url must be an HTTPS URL without whitespace")
+        raise SystemExit(
+            "--release-assets-base-url must be an HTTPS URL without whitespace"
+        )
     if not args.hero_image.is_file():
         raise SystemExit(f"--hero-image must be an existing file: {args.hero_image}")
     if args.hero_image.suffix.lower() not in PRESENTATION_ASSET_SUFFIXES:
@@ -75,11 +104,11 @@ def manifest(args: argparse.Namespace) -> dict[str, Any]:
         "runtime": {
             "kind": "standard-acp",
             "install": {
-                "runner": "npm",
-                "args": ["install", "--prefix", "${installRoot}", args.runtime_package],
+                "runner": args.runtime_runner,
+                "args": runtime_install_args(args),
             },
             "launch": {
-                "executable": f"${{installRoot}}/node_modules/.bin/{args.binary}",
+                "executable": runtime_executable(args),
                 "args": args.launch_arg,
             },
         },
@@ -100,6 +129,13 @@ def manifest(args: argparse.Namespace) -> dict[str, Any]:
 def create(args: argparse.Namespace) -> None:
     root = args.output
     root.mkdir(parents=True, exist_ok=True)
+    shutil.copytree(ASSETS / "repository", root, dirs_exist_ok=True)
+    (root / "infra/aws").mkdir(parents=True, exist_ok=True)
+    (root / "scripts").mkdir(parents=True, exist_ok=True)
+    shutil.copy2(
+        ASSETS / "aws/agent-extension-release-infrastructure.yaml",
+        root / "infra/aws/agent-extension-release-infrastructure.yaml",
+    )
     write(root, ".gitignore", "node_modules/\nbuild/\n.DS_Store\n")
     write(
         root,
@@ -116,6 +152,9 @@ def create(args: argparse.Namespace) -> None:
         f"Declarative Tutti integration for `{args.runtime_package}` through standard ACP.\n\n"
         "## Validate\n\n```sh\npnpm install --frozen-lockfile\npnpm check\n"
         "pnpm package:tutti-agent\n```\n\n"
+        "Verify the real ACP runtime without sending a paid prompt:\n\n"
+        f"```sh\npython3 scripts/probe_acp_runtime.py --cwd /path/to/project -- {args.binary} "
+        f"{' '.join(args.launch_arg)}\n```\n\n"
         "The signed manifest references the primary Agent identity artwork through "
         "`icon` and the home poster through `heroImage`. Tutti projects the icon to "
         "Agent selectors, conversation rows, Message Center, and mentions. Keep each "
@@ -124,7 +163,9 @@ def create(args: argparse.Namespace) -> None:
         "## Release\n\nThe repository-owned `.github/workflows/release.yml` builds, "
         "signs, and uploads immutable releases using `scripts/release/`. Configure "
         "the documented GitHub OIDC/AWS variables and the "
-        "`TUTTI_AGENT_EXTENSION_SIGNING_PRIVATE_KEY` repository secret before dispatch.\n",
+        "`TUTTI_AGENT_EXTENSION_SIGNING_PRIVATE_KEY` repository secret before dispatch. "
+        "For new infrastructure, deploy "
+        "`infra/aws/agent-extension-release-infrastructure.yaml`.\n",
     )
     write(
         root,
@@ -139,6 +180,8 @@ def create(args: argparse.Namespace) -> None:
                 "scripts": {
                     "check": (
                         "node scripts/check.mjs && "
+                        "python3 scripts/validate_agent_extension.py "
+                        "build/tutti-agent/package && "
                         "node --test scripts/release/test/*.test.mjs"
                     ),
                     "package:tutti-agent": "node scripts/package.mjs",
@@ -159,6 +202,14 @@ def create(args: argparse.Namespace) -> None:
         '    engines: { node: ">=10" }\n    hasBin: true\n\nsnapshots:\n'
         "  semver@7.8.0: {}\n",
     )
+    shutil.copy2(
+        Path(__file__).resolve().with_name("validate_agent_extension.py"),
+        root / "scripts/validate_agent_extension.py",
+    )
+    shutil.copy2(
+        Path(__file__).resolve().with_name("probe_acp_runtime.py"),
+        root / "scripts/probe_acp_runtime.py",
+    )
     write(root, "extension/tutti.agent.json", dump(manifest(args)))
     write(
         root,
@@ -169,7 +220,10 @@ def create(args: argparse.Namespace) -> None:
                 "candidates": [
                     {
                         "binaryNames": [args.binary],
-                        "version": {"args": ["--version"], "constraint": args.version_constraint},
+                        "version": {
+                            "args": ["--version"],
+                            "constraint": args.version_constraint,
+                        },
                         "launchArgs": args.launch_arg,
                         "probe": {"kind": "acp-initialize", "timeoutMs": 5000},
                     }
@@ -322,14 +376,24 @@ def main() -> int:
     parser.add_argument("--provider", required=True)
     parser.add_argument("--extension-version", required=True)
     parser.add_argument("--runtime-package", required=True)
+    parser.add_argument(
+        "--runtime-runner",
+        choices=("npm", "pnpm", "uv"),
+        default="npm",
+    )
+    parser.add_argument("--runtime-executable")
     parser.add_argument("--binary", required=True)
     parser.add_argument("--version-constraint", required=True)
     parser.add_argument("--signing-key-id", required=True)
     parser.add_argument("--release-assets-base-url", required=True)
     parser.add_argument("--hero-image", required=True, type=Path)
-    parser.add_argument("--description", default="External Agent for Tutti through standard ACP")
-    parser.add_argument("--launch-arg", action="append", default=["--acp"])
+    parser.add_argument(
+        "--description", default="External Agent for Tutti through standard ACP"
+    )
+    parser.add_argument("--launch-arg", action="append")
     args = parser.parse_args()
+    if not args.launch_arg:
+        args.launch_arg = ["--acp"]
     validate_args(args)
     create(args)
     print(f"created Tutti Agent Extension repository at {args.output.resolve()}")

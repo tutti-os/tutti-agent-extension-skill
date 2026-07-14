@@ -24,7 +24,7 @@ jobs:
   publish:
     runs-on: ubuntu-latest
     concurrency:
-      group: tutti-agent-extension-${{ vars.TUTTI_APP_RELEASES_S3_BUCKET }}-__AGENT_KEY__
+      group: tutti-agent-extension-${{ vars.TUTTI_AGENT_RELEASES_S3_BUCKET }}-__AGENT_KEY__
       cancel-in-progress: false
 
     steps:
@@ -45,8 +45,8 @@ jobs:
       - name: Configure AWS credentials
         uses: aws-actions/configure-aws-credentials@v5
         with:
-          role-to-assume: ${{ vars.TUTTI_APP_RELEASES_AWS_ROLE_ARN }}
-          aws-region: ${{ vars.TUTTI_APP_RELEASES_AWS_REGION }}
+          role-to-assume: ${{ vars.TUTTI_AGENT_RELEASES_AWS_ROLE_ARN }}
+          aws-region: ${{ vars.TUTTI_AGENT_RELEASES_AWS_REGION }}
 
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
@@ -55,6 +55,9 @@ jobs:
         env:
           TUTTI_AGENT_EXTENSION_VERSION: ${{ inputs.version }}
         run: pnpm package:tutti-agent
+
+      - name: Validate extension package
+        run: python3 scripts/validate_agent_extension.py build/tutti-agent/package
 
       - name: Build signed immutable release
         env:
@@ -70,7 +73,7 @@ jobs:
 
       - name: Publish immutable release
         env:
-          BUCKET: ${{ vars.TUTTI_APP_RELEASES_S3_BUCKET }}
+          BUCKET: ${{ vars.TUTTI_AGENT_RELEASES_S3_BUCKET }}
           VERSION: ${{ inputs.version }}
         run: |
           set -euo pipefail
@@ -99,7 +102,7 @@ jobs:
 
       - name: Update versions and latest metadata
         env:
-          BUCKET: ${{ vars.TUTTI_APP_RELEASES_S3_BUCKET }}
+          BUCKET: ${{ vars.TUTTI_AGENT_RELEASES_S3_BUCKET }}
           VERSION: ${{ inputs.version }}
         run: |
           set -euo pipefail
