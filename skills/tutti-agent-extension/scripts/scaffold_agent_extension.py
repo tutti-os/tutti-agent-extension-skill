@@ -157,9 +157,9 @@ def create(args: argparse.Namespace) -> None:
         f"{' '.join(args.launch_arg)}\n```\n\n"
         "The signed manifest references the primary Agent identity artwork through "
         "`icon` and the home poster through `heroImage`. Tutti projects the icon to "
-        "Agent selectors, conversation rows, Message Center, and mentions. Keep each "
-        "packaged image at or below 256 KiB and replace it deliberately when branding "
-        "changes.\n\n"
+        "Agent selectors, conversation rows, Message Center, and mentions. Keep the "
+        "canonical icon background transparent unless the brand explicitly requires "
+        "an opaque shape, and keep each packaged image at or below 256 KiB.\n\n"
         "## Release\n\nThe repository-owned `.github/workflows/release.yml` builds, "
         "signs, and uploads immutable releases using `scripts/release/`. Configure "
         "the documented GitHub OIDC/AWS variables and the "
@@ -294,8 +294,7 @@ def create(args: argparse.Namespace) -> None:
         root,
         "extension/assets/icon.svg",
         '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">'
-        '<rect width="64" height="64" rx="14" fill="#242424"/>'
-        '<path d="M18 32h28M32 18v28" stroke="#fff" stroke-width="6" stroke-linecap="round"/>'
+        '<path d="M18 32h28M32 18v28" stroke="#242424" stroke-width="6" stroke-linecap="round"/>'
         "</svg>\n",
     )
     hero_target = root / "extension" / hero_image_asset_path(args)

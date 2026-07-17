@@ -51,6 +51,27 @@ runtime resolver. The resolver:
 
 Sessions persist `agentTargetId`; resume re-derives the same fixed extension.
 
+## Setup lifecycle
+
+Extension setup is Target-owned daemon state. The desktop host may expose a
+small user-confirmed API such as "install pinned runtime" or "open auth
+instructions", but the daemon owns action validation, execution, persistence,
+and status projection.
+
+Model setup state explicitly:
+
+- durable installed-package and setup-action records keyed by workspace,
+  project root, Target, extension version, runtime source, and runtime
+  fingerprint;
+- idempotent action requests with visible success/failure state;
+- DTO projection from daemon state to desktop settings and Agent GUI setup
+  gates;
+- no provider-name shortcuts and no renderer-only readiness flags.
+
+Use the built-in managed-environment service only for built-in providers it
+owns. For extension Targets, show setup controls from the Target lifecycle and
+the signed package contract.
+
 ## Composer projection
 
 Composer options are Target-scoped. After authoritative Target resolution,

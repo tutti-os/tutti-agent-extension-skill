@@ -36,6 +36,12 @@
       "prompt": "请为一个通过 uv 安装、标准 ACP stdio 通信的 Python Agent 创建独立 Tutti 接入仓库，并配置 GitHub Actions 发布所需的 AWS 资源。需要证明 initialize 和 session/new 真正可用。",
       "expected_output": "Scaffolds a provider-independent repository with an exact package==version uv install, keeps installation and launch paths under installRoot, uses the reusable ACP probe for initialize and session/new, validates deep profile semantics, deploys repository-scoped GitHub OIDC plus private S3 and CloudFront infrastructure, and configures the Agent-specific GitHub variables without exposing credentials.",
       "files": []
+    },
+    {
+      "id": 7,
+      "prompt": "外部 ACP Agent 需要用户点击后安装固定版本运行时，刷新后设置状态不能丢。请评审 Tutti host 方案。",
+      "expected_output": "Keeps setup under the Agent Target lifecycle, exposes only explicit user-confirmed host actions, persists installed package and setup-action state in daemon-owned storage keyed by Target and extension version, projects renderer DTOs from daemon state, and avoids provider-name shortcuts or renderer-only readiness flags.",
+      "files": []
     }
   ]
 }
