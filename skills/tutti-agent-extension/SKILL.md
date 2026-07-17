@@ -85,11 +85,13 @@ or provider-specific patch.
    still below `${installRoot}` but does not use the generated runner default.
 
 3. Replace the generated manifest `icon` with the Agent's primary identity
-   artwork and provide a branded home poster through `heroImage`. The same
-   signed `icon` must project through the Agent Target to selectors,
-   conversation rows, Message Center, and mentions; do not create a second
-   provider-specific renderer icon catalog. Keep each presentation asset at or
-   below 256 KiB and package it locally so Tutti can cache verified bytes
+   artwork and provide a branded home poster through `heroImage`. Keep the
+   canonical icon background transparent unless the brand explicitly requires
+   an opaque shape; monochrome mask surfaces otherwise collapse the mark into a
+   solid block. The same signed `icon` must project through the Agent Target to
+   selectors, conversation rows, Message Center, and mentions; do not create a
+   second provider-specific renderer icon catalog. Keep each presentation asset
+   at or below 256 KiB and package it locally so Tutti can cache verified bytes
    instead of loading a mutable third-party URL.
 4. Edit `extension/tutti.agent.json` and referenced profiles. Keep install
    packages exactly pinned and use only the constrained `${installRoot}`
@@ -152,9 +154,14 @@ example, not as a source of Gemini-specific host behavior.
    snapshots. A terminal failure must atomically settle the turn, clear
    `activeTurnId`, persist the error, and unblock submission.
 10. Keep environment management ownership clear: extension readiness belongs
-    to the Agent Target lifecycle. Do not show the built-in managed-environment
+    to the Agent Target lifecycle. Project runtime install, auth prompts, and
+    other setup actions must flow through explicit user-confirmed host APIs and
+    durable daemon setup state. Do not show the built-in managed-environment
     wizard for extension Targets.
-11. Add focused tests at each boundary, then run the validation lanes listed in
+11. Store extension installation/setup state in daemon-owned durable data, not
+    renderer memory. API responses should project DTOs from daemon state so
+    desktop UI cannot become the second source of lifecycle truth.
+12. Add focused tests at each boundary, then run the validation lanes listed in
     `references/implementation-map.md`.
 
 ## Release and rollout

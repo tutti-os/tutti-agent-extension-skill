@@ -165,6 +165,10 @@ The manifest has one canonical `icon` field. Do not add separate session,
 message, mention, or provider-rail icon fields: the host projects the verified
 asset through the Agent Target `iconUrl`, and each surface resolves it by
 `agentTargetId`. Provider-catalog artwork is only for legacy built-in sessions.
+Prefer a transparent background for the canonical icon. It lets Tutti reuse the
+same signed asset in color surfaces and monochrome mask surfaces without
+turning an opaque square or rounded rectangle into the visible mark. Use an
+opaque icon only when the brand identity itself requires that shape.
 
 Compose the poster so its identity survives the carousel's perspective and
 downscaling: use a clear focal subject, strong contrast, and safe margins. Do

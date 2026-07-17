@@ -66,6 +66,11 @@ wizard is for built-in providers managed by that feature. An Agent Extension is
 owned by its Target lifecycle and discovery profile. Gate the wizard by Target
 kind, not by provider-name exceptions.
 
+If the UI shows extension setup but actions disappear after refresh, inspect the
+daemon setup store and DTO projection before changing React state. Runtime
+install/auth/setup actions should be durable daemon facts keyed by Target and
+extension version, not transient renderer flags.
+
 ### Typing `/` shows no commands or Skills
 
 Inspect the installed package before changing the palette. The signed

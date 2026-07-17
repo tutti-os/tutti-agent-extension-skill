@@ -68,13 +68,18 @@ or other built-in strategies.
   temporarily unavailable.
 - Treat missing extension versions on resume as a read-only session condition;
   never silently resume using another provider or package version.
+- Persist installation and setup action state in daemon-owned durable storage.
+  Renderer state may observe or request actions, but it must not become the
+  authoritative source for installed packages, pending setup, auth status, or
+  lifecycle phase.
 
 ## Runtime invariants
 
 - Prefer a compatible local executable discovered through the shared command
   resolver.
 - Do not silently install into the user's project. Project-scoped installation
-  requires a host API and explicit confirmation.
+  requires a host API, explicit confirmation, and a daemon-recorded setup
+  action result.
 - Bind adapter caches to workspace, project root, Target, extension/profile
   version, runtime source, and runtime fingerprint. Provider alone is not a
   safe cache key.
