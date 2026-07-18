@@ -9,6 +9,8 @@ provider 无关，覆盖：
 - 评审 Agent Extension 的信任边界与模块归属；
 - 创建包含治理文件、支持 npm、pnpm 或 uv Runtime 安装的独立 Extension 仓库；
 - 声明 Runtime 探测、能力、工具、模型和权限语义；
+- 投影 mask-safe 与彩色 Agent 身份图，不增加 provider 专用渲染目录；
+- 通过 Target 管理项目无关 Runtime 安装、持久化 setup 和认证动作；
 - 在 Tutti 中接入开放 provider identity 和固定 Agent Target；
 - 标准化 ACP 模型、事件、错误和 lifecycle snapshot；
 - 真实探测 ACP `initialize` 和 `session/new` 协议协商；

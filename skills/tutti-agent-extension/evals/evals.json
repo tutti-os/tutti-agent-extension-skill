@@ -4,7 +4,7 @@
     {
       "id": 1,
       "prompt": "请把 Example CLI 作为新的标准 ACP Agent 接入 Tutti。它通过 @example/cli@1.4.2 安装，example --acp 启动，并需要独立仓库发布。请给出实现并说明验证方式。",
-      "expected_output": "Creates a declarative Agent Extension repository with an exact runtime package version, signed local icon and heroImage poster assets, discovery/composer profiles, generic standard-ACP launch, a self-contained release workflow, and package validation; avoids provider-specific Tutti branches.",
+      "expected_output": "Creates a declarative Agent Extension repository with an exact scoped runtime package version, signed local mask-safe icon, colored sidebarIcon, and heroImage assets, discovery/composer profiles, generic standard-ACP launch, a self-contained release workflow, and package validation; avoids provider-specific Tutti branches.",
       "files": []
     },
     {
@@ -22,13 +22,13 @@
     {
       "id": 4,
       "prompt": "新的 ACP Agent 已经能启动，但首页轮播只显示通用图标，输入 / 也没有命令或仓库里的 Skills。请检查扩展仓库和 Tutti 接入并修复。",
-      "expected_output": "Checks the installed signed manifest for a local heroImage and validates the asset, declares Skill roots and capability support in extension profiles, verifies persisted ACP availableCommands, and keeps open-provider commands visible without requiring a built-in slash policy.",
+      "expected_output": "Checks signed heroImage and presentation assets, declares Skill roots and capability support, verifies persisted ACP availableCommands, applies signed slashCommands policy when declared, and keeps open-provider commands visible without a provider-name branch.",
       "files": []
     },
     {
       "id": 5,
       "prompt": "外部 ACP Agent 在 Agent 切换栏有图标，但历史会话列表每条消息前都是空白。请检查 Agent 包和 Tutti 展示链路。",
-      "expected_output": "Verifies the signed manifest contains one canonical local icon, traces it through Agent Target iconUrl and session agentTargetId, fixes every shared avatar surface to consume the Target presentation, and keeps provider-catalog icons only for legacy sessions instead of adding an extension-specific renderer branch.",
+      "expected_output": "Verifies signed package icon is mask-safe and optional sidebarIcon is colored identity, traces desktop promotion to primary iconUrl plus maskIconUrl through Target, window intent, Agent GUI presentation context, and memo keys, and keeps provider catalogs legacy-only.",
       "files": []
     },
     {
@@ -40,7 +40,13 @@
     {
       "id": 7,
       "prompt": "外部 ACP Agent 需要用户点击后安装固定版本运行时，刷新后设置状态不能丢。请评审 Tutti host 方案。",
-      "expected_output": "Keeps setup under the Agent Target lifecycle, exposes only explicit user-confirmed host actions, persists installed package and setup-action state in daemon-owned storage keyed by Target and extension version, projects renderer DTOs from daemon state, and avoids provider-name shortcuts or renderer-only readiness flags.",
+      "expected_output": "Keeps setup under the Agent Target lifecycle, issues a daemon-derived install plan digest, installs into a project-neutral runtime-identity root after explicit confirmation, persists idempotent install/auth actions, reuses compatible runtimes across workspaces, projects renderer DTOs from daemon state, and avoids provider-name or renderer-only readiness shortcuts.",
+      "files": []
+    },
+    {
+      "id": 8,
+      "prompt": "Extension 已提供彩色 sidebarIcon 和透明 icon，但 conversation rail 仍把彩色方块当 CSS mask。单测直接注入 maskIconUrl 时能通过，请审查生产链路。",
+      "expected_output": "Treats sidebarIcon as colored primary identity and icon as mask-safe glyph, proves maskIconUrl survives the real Target-to-desktop-to-window-intent-to-AgentGUI presentation projection, adds it to memo/cache identities, and writes a production-path regression test rather than relying on direct context injection.",
       "files": []
     }
   ]

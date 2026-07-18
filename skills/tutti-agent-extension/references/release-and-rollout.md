@@ -42,10 +42,11 @@ manifest, profiles, locales, documentation, and image assets accepted by the
 package validator. Runtime binaries, executable files, scripts, symlinks, and
 dynamically loaded renderer code are forbidden.
 
-Inspect the packaged manifest and archive before signing: `icon.src` and
-`heroImage.src` must resolve to the intended local presentation assets. A
-release that updates metadata but omits the poster bytes will keep the home
-carousel on a generic or stale visual even when publication succeeds.
+Inspect the packaged manifest and archive before signing: `icon.src`, optional
+`sidebarIcon.src`, and `heroImage.src` must resolve to intended local assets.
+Keep `icon` mask-safe and use `sidebarIcon` for colored identity artwork. A
+release that omits referenced bytes can produce a broken conversation mask,
+generic identity, or stale home poster even when publication succeeds.
 
 The bundled workflow expects these GitHub repository variables:
 

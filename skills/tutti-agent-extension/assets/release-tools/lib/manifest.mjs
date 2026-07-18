@@ -26,6 +26,15 @@ const allowedPackageExtensions = new Set([
   ".jpeg",
   ".webp"
 ]);
+const presentationAssetExtensions = new Set([
+  ".svg",
+  ".png",
+  ".jpg",
+  ".jpeg",
+  ".webp"
+]);
+const presentationAssetLimit = 256 << 10;
+const packageDocumentation = new Set(["AGENTS.md", "README.md", "LICENSE", "NOTICE"]);
 const allowedPlaceholders = new Set([
   "${projectRoot}",
   "${installRoot}",
@@ -38,6 +47,7 @@ export async function validatePackage(packageDir, expectedAgentKey) {
   validateManifest(manifest, expectedAgentKey);
   await validatePackageEntries(packageDir);
   await validateReferencedFiles(packageDir, manifest);
+  await validateDeclaredFiles(packageDir, manifest);
   return manifest;
 }
 
@@ -45,6 +55,23 @@ export function validateManifest(manifest, expectedAgentKey) {
   if (!manifest || typeof manifest !== "object" || Array.isArray(manifest)) {
     throw new Error("agent manifest must be an object");
   }
+  rejectUnknownKeys(
+    manifest,
+    new Set([
+      "schemaVersion",
+      "agentKey",
+      "version",
+      "name",
+      "description",
+      "icon",
+      "sidebarIcon",
+      "heroImage",
+      "runtime",
+      "profiles",
+      "localizationInfo"
+    ]),
+    "manifest"
+  );
   if (manifest.schemaVersion !== manifestSchemaVersion) {
     throw new Error(
       `agent manifest schemaVersion must be ${manifestSchemaVersion}`
@@ -65,6 +92,9 @@ export function validateManifest(manifest, expectedAgentKey) {
     requireString(manifest.description, "manifest description");
   }
   validateIcon(manifest.icon);
+  if (manifest.sidebarIcon !== undefined) {
+    validateSidebarIcon(manifest.sidebarIcon);
+  }
   if (manifest.heroImage !== undefined) {
     validateHeroImage(manifest.heroImage);
   }
@@ -78,6 +108,7 @@ function validateIcon(icon) {
   if (!icon || typeof icon !== "object" || icon.type !== "asset") {
     throw new Error("manifest icon.type must be asset");
   }
+  rejectUnknownKeys(icon, new Set(["type", "src"]), "manifest icon");
   requireRelativePath(icon.src, "manifest icon.src");
 }
 
@@ -89,13 +120,31 @@ function validateHeroImage(heroImage) {
   ) {
     throw new Error("manifest heroImage.type must be asset");
   }
+  rejectUnknownKeys(heroImage, new Set(["type", "src"]), "manifest heroImage");
   requireRelativePath(heroImage.src, "manifest heroImage.src");
+}
+
+function validateSidebarIcon(sidebarIcon) {
+  if (
+    !sidebarIcon ||
+    typeof sidebarIcon !== "object" ||
+    sidebarIcon.type !== "asset"
+  ) {
+    throw new Error("manifest sidebarIcon.type must be asset");
+  }
+  rejectUnknownKeys(
+    sidebarIcon,
+    new Set(["type", "src"]),
+    "manifest sidebarIcon"
+  );
+  requireRelativePath(sidebarIcon.src, "manifest sidebarIcon.src");
 }
 
 function validateRuntime(runtime) {
   if (!runtime || typeof runtime !== "object") {
     throw new Error("manifest runtime is required");
   }
+  rejectUnknownKeys(runtime, new Set(["kind", "install", "launch"]), "runtime");
   if (runtime.kind !== "standard-acp") {
     throw new Error("manifest runtime.kind must be standard-acp");
   }
@@ -103,11 +152,19 @@ function validateRuntime(runtime) {
   if (!runtime.launch || typeof runtime.launch !== "object") {
     throw new Error("manifest runtime.launch is required");
   }
+  rejectUnknownKeys(
+    runtime.launch,
+    new Set(["executable", "args"]),
+    "runtime launch"
+  );
   validateTemplateArgument(
     requireString(runtime.launch.executable, "runtime launch executable"),
     "runtime launch executable"
   );
-  if (!runtime.launch.executable.includes("${installRoot}")) {
+  if (
+    !runtime.launch.executable.startsWith("${installRoot}/") ||
+    runtime.launch.executable.split("/").includes("..")
+  ) {
     throw new Error("runtime launch executable must stay under ${installRoot}");
   }
   validateArgv(runtime.launch.args ?? [], "runtime launch args");
@@ -117,32 +174,39 @@ function validateInstall(install) {
   if (!install || typeof install !== "object") {
     throw new Error("manifest runtime.install is required");
   }
+  rejectUnknownKeys(install, new Set(["runner", "args"]), "runtime install");
   if (!new Set(["npm", "pnpm", "uv"]).has(install.runner)) {
     throw new Error("runtime install runner must be npm, pnpm, or uv");
   }
   validateArgv(install.args, "runtime install args");
-  if (!install.args.some((argument) => argument.includes("${installRoot}"))) {
-    throw new Error("runtime install args must target ${installRoot}");
-  }
+  const expectedPrefix = {
+    npm: ["install", "--prefix", "${installRoot}"],
+    pnpm: ["add", "--dir", "${installRoot}"],
+    uv: ["pip", "install", "--target", "${installRoot}"]
+  }[install.runner];
   if (install.runner === "npm" || install.runner === "pnpm") {
-    const packageArguments = install.args.filter((argument) =>
-      /^(?:@[a-z0-9._-]+\/)?[a-z0-9._-]+@[0-9]+\.[0-9]+\.[0-9]+(?:-[0-9A-Za-z.-]+)?$/u.test(
-        argument
+    if (
+      install.args.length !== expectedPrefix.length + 1 ||
+      !expectedPrefix.every((argument, index) => install.args[index] === argument) ||
+      !/^@[a-z0-9._-]+\/[a-z0-9._-]+@[0-9]+\.[0-9]+\.[0-9]+(?:-[0-9A-Za-z.-]+)?$/u.test(
+        install.args.at(-1)
       )
-    );
-    if (packageArguments.length !== 1) {
+    ) {
       throw new Error(
-        "npm/pnpm install must contain one exact package@version"
+        "npm/pnpm install must use the safe local form with one exact scoped package@version"
       );
     }
   } else {
-    const packageArguments = install.args.filter((argument) =>
-      /^[A-Za-z0-9][A-Za-z0-9._-]*==[0-9]+\.[0-9]+\.[0-9]+(?:[A-Za-z0-9._+-]*)?$/u.test(
-        argument
+    if (
+      install.args.length !== expectedPrefix.length + 1 ||
+      !expectedPrefix.every((argument, index) => install.args[index] === argument) ||
+      !/^[A-Za-z0-9][A-Za-z0-9._-]*==[0-9]+\.[0-9]+\.[0-9]+(?:[A-Za-z0-9._+-]*)?$/u.test(
+        install.args.at(-1)
       )
-    );
-    if (packageArguments.length !== 1) {
-      throw new Error("uv install must contain one exact package==version");
+    ) {
+      throw new Error(
+        "uv install must use the safe local form with one exact package==version"
+      );
     }
   }
 }
@@ -172,6 +236,11 @@ function validateProfiles(profiles) {
   if (!profiles || typeof profiles !== "object" || Array.isArray(profiles)) {
     throw new Error("manifest profiles is required");
   }
+  rejectUnknownKeys(
+    profiles,
+    new Set(Object.keys(profileSchemas)),
+    "manifest profiles"
+  );
   for (const [kind, file] of Object.entries(profiles)) {
     if (!Object.hasOwn(profileSchemas, kind)) {
       throw new Error(`manifest profiles.${kind} is unsupported`);
@@ -187,6 +256,11 @@ function validateLocalizationInfo(localizationInfo) {
   if (!localizationInfo || typeof localizationInfo !== "object") {
     throw new Error("manifest localizationInfo is required");
   }
+  rejectUnknownKeys(
+    localizationInfo,
+    new Set(["defaultLocale", "defaultFile", "additionalLocales"]),
+    "localizationInfo"
+  );
   requireString(
     localizationInfo.defaultLocale,
     "localizationInfo defaultLocale"
@@ -200,26 +274,45 @@ function validateLocalizationInfo(localizationInfo) {
     throw new Error("localizationInfo additionalLocales must be an array");
   }
   for (const [index, locale] of additional.entries()) {
+    if (!locale || typeof locale !== "object" || Array.isArray(locale)) {
+      throw new Error(`additionalLocales[${index}] must be an object`);
+    }
+    rejectUnknownKeys(
+      locale,
+      new Set(["locale", "file"]),
+      `additionalLocales[${index}]`
+    );
     requireString(locale?.locale, `additionalLocales[${index}].locale`);
     requireRelativePath(locale?.file, `additionalLocales[${index}].file`);
   }
 }
 
+function rejectUnknownKeys(value, allowed, label) {
+  for (const key of Object.keys(value)) {
+    if (!allowed.has(key)) {
+      throw new Error(`${label} contains unsupported field ${key}`);
+    }
+  }
+}
+
 async function validateReferencedFiles(packageDir, manifest) {
   const references = [
-    [manifest.icon.src, null],
-    ...(manifest.heroImage ? [[manifest.heroImage.src, null]] : []),
-    [manifest.localizationInfo.defaultFile, null],
+    [manifest.icon.src, null, true],
+    ...(manifest.sidebarIcon ? [[manifest.sidebarIcon.src, null, true]] : []),
+    ...(manifest.heroImage ? [[manifest.heroImage.src, null, true]] : []),
+    [manifest.localizationInfo.defaultFile, null, false],
     ...(manifest.localizationInfo.additionalLocales ?? []).map((entry) => [
       entry.file,
-      null
+      null,
+      false
     ]),
     ...Object.entries(manifest.profiles).map(([kind, file]) => [
       file,
-      profileSchemas[kind]
+      profileSchemas[kind],
+      false
     ])
   ];
-  for (const [relativePath, expectedSchema] of references) {
+  for (const [relativePath, expectedSchema, presentationAsset] of references) {
     const filePath = resolvePackagePath(packageDir, relativePath);
     const info = await stat(filePath).catch(() => null);
     if (!info?.isFile() || info.size === 0) {
@@ -235,7 +328,79 @@ async function validateReferencedFiles(packageDir, manifest) {
         );
       }
     }
+    if (presentationAsset) {
+      await validatePresentationAsset(filePath, relativePath, info.size);
+    }
   }
+}
+
+async function validatePresentationAsset(filePath, relativePath, size) {
+  if (!presentationAssetExtensions.has(path.extname(filePath).toLowerCase())) {
+    throw new Error(`unsupported presentation asset type: ${relativePath}`);
+  }
+  if (size > presentationAssetLimit) {
+    throw new Error(`presentation asset exceeds 256 KiB: ${relativePath}`);
+  }
+  if (path.extname(filePath).toLowerCase() !== ".svg") return;
+  let contents;
+  try {
+    contents = new TextDecoder("utf-8", { fatal: true })
+      .decode(await readFile(filePath))
+      .toLowerCase();
+  } catch {
+    throw new Error(`presentation SVG must be valid UTF-8: ${relativePath}`);
+  }
+  if (
+    /<(?:[a-z_][\w.-]*:)?(?:script|foreignobject|style|set|animate|animatemotion|animatetransform|discard|handler|listener|audio|video|iframe|object|embed)\b|javascript:|\s(?:[a-z_][\w.-]*:)?(?:on[a-z][\w.-]*|style)\s*=|\sxml:base\s*=|@import|<!doctype|<!entity|&#|\\/iu.test(contents)
+  ) {
+    throw new Error(`presentation SVG contains active or remote content: ${relativePath}`);
+  }
+  for (const match of contents.matchAll(/(?:xlink:)?href\s*=\s*(['"])(.*?)\1/giu)) {
+    if (!match[2].trim().startsWith("#")) {
+      throw new Error(`presentation SVG contains active or remote content: ${relativePath}`);
+    }
+  }
+  for (const match of contents.matchAll(/url\s*\(\s*(['"]?)(.*?)\1\s*\)/giu)) {
+    if (!match[2].trim().startsWith("#")) {
+      throw new Error(`presentation SVG contains active or remote content: ${relativePath}`);
+    }
+  }
+}
+
+async function validateDeclaredFiles(packageDir, manifest) {
+  const declared = new Set([
+    "tutti.agent.json",
+    manifest.icon.src,
+    ...(manifest.sidebarIcon ? [manifest.sidebarIcon.src] : []),
+    ...(manifest.heroImage ? [manifest.heroImage.src] : []),
+    manifest.localizationInfo.defaultFile,
+    ...(manifest.localizationInfo.additionalLocales ?? []).map((entry) => entry.file),
+    ...Object.values(manifest.profiles)
+  ]);
+  for (const file of packageDocumentation) {
+    const info = await stat(path.join(packageDir, file)).catch(() => null);
+    if (info?.isFile()) declared.add(file);
+  }
+  for (const file of await collectPackageFiles(packageDir)) {
+    if (!declared.has(file)) {
+      throw new Error(`agent package contains undeclared file: ${file}`);
+    }
+  }
+}
+
+async function collectPackageFiles(root, relativeDir = "") {
+  const result = [];
+  for (const entry of await readdir(path.join(root, relativeDir), {
+    withFileTypes: true
+  })) {
+    const relativePath = path.posix.join(relativeDir, entry.name);
+    if (entry.isDirectory()) {
+      result.push(...(await collectPackageFiles(root, relativePath)));
+    } else if (entry.isFile()) {
+      result.push(relativePath);
+    }
+  }
+  return result;
 }
 
 async function validatePackageEntries(root, relativeDir = "") {
@@ -244,6 +409,9 @@ async function validatePackageEntries(root, relativeDir = "") {
   });
   for (const entry of entries) {
     const relativePath = path.join(relativeDir, entry.name);
+    if (/[\\\n\r\0]/u.test(relativePath)) {
+      throw new Error(`agent package contains unsafe path: ${relativePath}`);
+    }
     const absolutePath = path.join(root, relativePath);
     if (entry.isSymbolicLink()) {
       throw new Error(
@@ -259,7 +427,10 @@ async function validatePackageEntries(root, relativeDir = "") {
         `agent package contains unsupported entry: ${relativePath}`
       );
     }
-    if (!allowedPackageExtensions.has(path.extname(entry.name).toLowerCase())) {
+    if (
+      !allowedPackageExtensions.has(path.extname(entry.name).toLowerCase()) &&
+      !packageDocumentation.has(relativePath)
+    ) {
       throw new Error(
         `agent package contains forbidden file type: ${relativePath}`
       );

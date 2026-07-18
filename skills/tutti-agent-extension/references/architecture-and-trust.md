@@ -30,6 +30,8 @@ trust, process execution, canonical activity, durable state, and UI.
   `agent-extension:<agentKey>@<version>`.
 - runtime binding: the discovered or explicitly installed executable plus its
   fingerprint.
+- runtime identity: a project-neutral digest of Agent key, platform, exact
+  package, install/launch argv, executable, and discovery profile.
 
 Never use an open provider string as launch authority. A request may preserve
 the provider only after the daemon resolves the fixed Agent Target and verifies
@@ -68,22 +70,39 @@ or other built-in strategies.
   temporarily unavailable.
 - Treat missing extension versions on resume as a read-only session condition;
   never silently resume using another provider or package version.
-- Persist installation and setup action state in daemon-owned durable storage.
-  Renderer state may observe or request actions, but it must not become the
-  authoritative source for installed packages, pending setup, auth status, or
-  lifecycle phase.
+- Persist extension installation and setup action metadata in daemon-owned
+  durable storage. Managed runtime files live in a stable user-local
+  runtime-identity root and may be reused across workspaces. Renderer state may
+  observe or request actions, but it is never authoritative for packages,
+  setup, auth, or lifecycle.
 
 ## Runtime invariants
 
 - Prefer a compatible local executable discovered through the shared command
   resolver.
-- Do not silently install into the user's project. Project-scoped installation
-  requires a host API, explicit confirmation, and a daemon-recorded setup
-  action result.
+- Never install into the user's project or global package state. Managed
+  installation requires a daemon-issued plan digest, explicit confirmation,
+  a project-neutral staging/root, version and ACP probes, atomic activation,
+  and a durable setup-action result.
+- Prefer a compatible PATH runtime even when a managed runtime exists. Verify
+  managed executable fingerprints and fail closed on broken or foreign links.
 - Bind adapter caches to workspace, project root, Target, extension/profile
   version, runtime source, and runtime fingerprint. Provider alone is not a
   safe cache key.
 - Use a real, daemon-owned CWD for hidden/no-project ACP probes.
+
+## Presentation invariants
+
+- Package `icon` is a transparent, mask-safe conversation-row glyph.
+- Optional package `sidebarIcon` is colored identity artwork. When present,
+  desktop projection promotes it to primary `iconUrl` and preserves package
+  `icon` as `maskIconUrl`; rail-specific DTOs may retain `sidebarIconUrl`.
+- `heroImage` remains home-carousel artwork. All presentation bytes come from
+  the verified package and stay pinned to its installation.
+- `iconUrl`, `maskIconUrl`, and `sidebarIconUrl` must survive Target, desktop
+  contracts, window intents, Agent GUI normalization, presentation contexts,
+  and memo/cache keys. Missing one projection must not silently fall back to a
+  colored image in a monochrome mask.
 
 ## Canonical activity invariant
 

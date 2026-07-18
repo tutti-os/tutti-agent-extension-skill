@@ -12,6 +12,10 @@ integration while keeping the architecture provider-independent. It covers:
   npm, pnpm, or uv runtime installation;
 - declaring runtime discovery, capabilities, tools, composer models, and
   permission semantics;
+- projecting mask-safe and colored Agent identity artwork without
+  provider-specific renderer catalogs;
+- installing project-neutral Target-managed runtimes with durable setup and
+  authentication actions;
 - integrating open provider identities and fixed Agent Targets in Tutti;
 - normalizing standard ACP models, events, errors, and lifecycle snapshots;
 - probing real ACP `initialize` and `session/new` negotiation;

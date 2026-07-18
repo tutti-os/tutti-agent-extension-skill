@@ -22,6 +22,7 @@ For an active design proposal, also read the matching dated file under
 | Trusted extension source defaults | `config/tutti.defaults.json` |
 | Daemon HTTP contracts | `services/tuttid/api/openapi/tuttid.v1.yaml` |
 | Extension reconcile, verification, activation | `services/tuttid` |
+| Target-managed runtime setup and auth | `services/tuttid/service/agentextension` |
 | Agent Target registration and resolution | `services/tuttid` |
 | Standard ACP adapter and activity normalization | `services/tuttid` |
 | Desktop daemon client and generated contracts | `packages/clients/*`, `apps/desktop` |
@@ -39,7 +40,9 @@ rg -n 'agent_extension|agentTargetId|AgentTarget' services apps packages
 rg -n 'standard-acp|session/new|availableModels|configOptions' services packages
 rg -n 'activeTurnId|turn\.failed|lifecycle|Planning next moves' services packages apps
 rg -n 'agentExtension|releaseIndexUrl|signingKeyId' config services docs
-rg -n 'heroImage|heroImageUrl|availableCommands|composer.*skills' services packages apps
+rg -n 'sidebarIcon|maskIconUrl|heroImage|heroImageUrl' services packages apps
+rg -n 'runtimeIdentity|setup/install|setup/authenticate|planDigest' services packages apps
+rg -n 'availableCommands|slashCommands|acpOptionId|composer.*skills' services packages apps
 ```
 
 ## Validation lanes
