@@ -14,7 +14,7 @@ KEY = re.compile(r"^[a-z][a-z0-9-]*$")
 BINARY = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._-]*$")
 SEMVER = re.compile(r"^(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)(?:-[0-9A-Za-z.-]+)?$")
 EXACT_NPM = re.compile(
-    r"^(?:@[a-z0-9][a-z0-9._-]*/)?[a-z0-9][a-z0-9._-]*@"
+    r"^@[a-z0-9][a-z0-9._-]*/[a-z0-9][a-z0-9._-]*@"
     r"(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)(?:-[0-9A-Za-z.-]+)?$"
 )
 EXACT_UV = re.compile(
@@ -22,7 +22,7 @@ EXACT_UV = re.compile(
     r"(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)(?:[A-Za-z0-9._+-]*)?$"
 )
 ASSETS = Path(__file__).resolve().parents[1] / "assets"
-PRESENTATION_ASSET_SUFFIXES = {".gif", ".jpeg", ".jpg", ".png", ".svg", ".webp"}
+PRESENTATION_ASSET_SUFFIXES = {".jpeg", ".jpg", ".png", ".svg", ".webp"}
 PRESENTATION_ASSET_LIMIT = 256 << 10
 
 
@@ -38,6 +38,10 @@ def write(root: Path, relative: str, content: str) -> None:
 
 def hero_image_asset_path(args: argparse.Namespace) -> str:
     return f"assets/hero-image{args.hero_image.suffix.lower()}"
+
+
+def sidebar_icon_asset_path(args: argparse.Namespace) -> str:
+    return f"assets/sidebar-icon{args.sidebar_icon.suffix.lower()}"
 
 
 def runtime_install_args(args: argparse.Namespace) -> list[str]:
@@ -85,15 +89,24 @@ def validate_args(args: argparse.Namespace) -> None:
     if not args.hero_image.is_file():
         raise SystemExit(f"--hero-image must be an existing file: {args.hero_image}")
     if args.hero_image.suffix.lower() not in PRESENTATION_ASSET_SUFFIXES:
-        raise SystemExit("--hero-image must be GIF, JPEG, PNG, SVG, or WebP")
+        raise SystemExit("--hero-image must be JPEG, PNG, SVG, or WebP")
     if args.hero_image.stat().st_size > PRESENTATION_ASSET_LIMIT:
         raise SystemExit("--hero-image must not exceed 256 KiB")
+    if args.sidebar_icon is not None:
+        if not args.sidebar_icon.is_file():
+            raise SystemExit(
+                f"--sidebar-icon must be an existing file: {args.sidebar_icon}"
+            )
+        if args.sidebar_icon.suffix.lower() not in PRESENTATION_ASSET_SUFFIXES:
+            raise SystemExit("--sidebar-icon must be JPEG, PNG, SVG, or WebP")
+        if args.sidebar_icon.stat().st_size > PRESENTATION_ASSET_LIMIT:
+            raise SystemExit("--sidebar-icon must not exceed 256 KiB")
     if args.output.exists() and any(args.output.iterdir()):
         raise SystemExit(f"output directory is not empty: {args.output}")
 
 
 def manifest(args: argparse.Namespace) -> dict[str, Any]:
-    return {
+    value = {
         "schemaVersion": "tutti.agent.manifest.v1",
         "agentKey": args.agent_key,
         "version": args.extension_version,
@@ -124,6 +137,12 @@ def manifest(args: argparse.Namespace) -> dict[str, Any]:
             "additionalLocales": [{"locale": "zh-CN", "file": "locales/zh-CN.json"}],
         },
     }
+    if args.sidebar_icon is not None:
+        value["sidebarIcon"] = {
+            "type": "asset",
+            "src": sidebar_icon_asset_path(args),
+        }
+    return value
 
 
 def create(args: argparse.Namespace) -> None:
@@ -155,11 +174,11 @@ def create(args: argparse.Namespace) -> None:
         "Verify the real ACP runtime without sending a paid prompt:\n\n"
         f"```sh\npython3 scripts/probe_acp_runtime.py --cwd /path/to/project -- {args.binary} "
         f"{' '.join(args.launch_arg)}\n```\n\n"
-        "The signed manifest references the primary Agent identity artwork through "
-        "`icon` and the home poster through `heroImage`. Tutti projects the icon to "
-        "Agent selectors, conversation rows, Message Center, and mentions. Keep the "
-        "canonical icon background transparent unless the brand explicitly requires "
-        "an opaque shape, and keep each packaged image at or below 256 KiB.\n\n"
+        "The signed manifest references a transparent conversation-mask glyph through "
+        "`icon`, optional colored identity artwork through `sidebarIcon`, and the home "
+        "poster through `heroImage`. Tutti promotes the colored identity to selectors, "
+        "Message Center, mentions, and rail surfaces while preserving the mask glyph for "
+        "conversation rows. Keep each packaged image at or below 256 KiB.\n\n"
         "## Release\n\nThe repository-owned `.github/workflows/release.yml` builds, "
         "signs, and uploads immutable releases using `scripts/release/`. Configure "
         "the documented GitHub OIDC/AWS variables and the "
@@ -272,7 +291,7 @@ def create(args: argparse.Namespace) -> None:
     locale = {
         "agent.name": args.display_name,
         "agent.description": args.description,
-        "runtime.install.title": f"Install {args.display_name} in this project",
+        "runtime.install.title": f"Install {args.display_name}",
         "runtime.install.description": "Installs the pinned runtime in Tutti's managed directory.",
         "runtime.authRequired": f"Authenticate {args.display_name} before starting a session.",
     }
@@ -284,7 +303,7 @@ def create(args: argparse.Namespace) -> None:
             {
                 "agent.name": args.display_name,
                 "agent.description": f"通过标准 ACP 使用 {args.display_name}",
-                "runtime.install.title": f"在当前项目安装 {args.display_name}",
+                "runtime.install.title": f"安装 {args.display_name}",
                 "runtime.install.description": "将固定版本运行时安装到 Tutti 管理的目录。",
                 "runtime.authRequired": f"请先完成 {args.display_name} 的身份认证。",
             }
@@ -300,6 +319,9 @@ def create(args: argparse.Namespace) -> None:
     hero_target = root / "extension" / hero_image_asset_path(args)
     hero_target.parent.mkdir(parents=True, exist_ok=True)
     hero_target.write_bytes(args.hero_image.read_bytes())
+    if args.sidebar_icon is not None:
+        sidebar_target = root / "extension" / sidebar_icon_asset_path(args)
+        sidebar_target.write_bytes(args.sidebar_icon.read_bytes())
     write(
         root,
         "scripts/check.mjs",
@@ -386,6 +408,7 @@ def main() -> int:
     parser.add_argument("--signing-key-id", required=True)
     parser.add_argument("--release-assets-base-url", required=True)
     parser.add_argument("--hero-image", required=True, type=Path)
+    parser.add_argument("--sidebar-icon", type=Path)
     parser.add_argument(
         "--description", default="External Agent for Tutti through standard ACP"
     )

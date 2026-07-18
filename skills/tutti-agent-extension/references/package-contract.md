@@ -7,6 +7,7 @@ extension/
   tutti.agent.json
   AGENTS.md
   assets/icon.svg
+  assets/sidebar-icon.svg
   assets/hero-image.jpg
   locales/en.json
   locales/zh-CN.json
@@ -24,8 +25,9 @@ runtime only when referenced by the signed manifest.
 Use `tutti.agent.manifest.v1` with:
 
 - stable `agentKey`, semantic `version`, display name and description;
-- an extension-local non-executable primary identity icon used across Agent
-  selection, conversation rows, Message Center, and mentions;
+- an extension-local non-executable mask-safe `icon` for conversation rows;
+- optional colored identity artwork referenced by `sidebarIcon` and promoted
+  by the host to Agent selection, Message Center, mentions, and rail surfaces;
 - an extension-local non-executable home poster referenced by `heroImage`;
 - `runtime.kind: standard-acp`;
 - an exact runtime package version for the future explicit installation path;
@@ -42,6 +44,7 @@ Example:
   "name": "Example CLI",
   "description": "Example CLI through the Agent Client Protocol",
   "icon": { "type": "asset", "src": "assets/icon.svg" },
+  "sidebarIcon": { "type": "asset", "src": "assets/sidebar-icon.svg" },
   "heroImage": { "type": "asset", "src": "assets/hero-image.jpg" },
   "runtime": {
     "kind": "standard-acp",
@@ -81,7 +84,7 @@ must also resolve below that root. Examples:
 ```json
 {
   "runner": "pnpm",
-  "args": ["add", "--dir", "${installRoot}", "example-cli@1.2.3"]
+  "args": ["add", "--dir", "${installRoot}", "@vendor/example-cli@1.2.3"]
 }
 ```
 
@@ -132,6 +135,33 @@ Prefer runtime-owned catalogs:
 Runtime IDs are Agent-owned. Semantic tiers are Tutti-owned. Do not hardcode a
 model list in the extension when ACP can report it.
 
+When the runtime exposes provider-native ACP config option IDs, reference them
+declaratively:
+
+```json
+{
+  "configOptions": {
+    "model": { "acpOptionId": "model-choice" },
+    "permission": { "acpOptionId": "approval-mode" },
+    "reasoning": { "acpOptionId": "thought-level" }
+  }
+}
+```
+
+When the runtime advertises commands that should reuse shared Tutti behavior:
+
+```json
+{
+  "slashCommands": {
+    "commandCatalogAuthoritative": true,
+    "commands": [
+      { "name": "compact", "effect": "submitImmediate" },
+      { "name": "plan", "effect": "togglePlanMode" }
+    ]
+  }
+}
+```
+
 When the Agent supports repository or user Skills, declare discovery instead
 of adding a provider branch to Tutti:
 
@@ -155,20 +185,20 @@ flag to `true`; otherwise the signed package contradicts its composer profile.
 
 ## Presentation assets
 
-The host contract permits an absent `heroImage`, but a publish-ready Agent
-repository should provide one because Tutti's home carousel uses it as the
-Agent poster. Keep icon and poster bytes inside the signed package, at or below
-256 KiB each, with an image extension understood by the host. SVG assets must
-not contain scripts, event handlers, `foreignObject`, or remote references.
+The host contract permits absent `sidebarIcon` and `heroImage`, but a
+publish-ready Agent should normally provide both. Keep every presentation asset
+inside the signed package, at or below 256 KiB, with a supported image
+extension. SVG assets must not contain scripts, event handlers,
+`foreignObject`, animation, or remote references.
 
-The manifest has one canonical `icon` field. Do not add separate session,
-message, mention, or provider-rail icon fields: the host projects the verified
-asset through the Agent Target `iconUrl`, and each surface resolves it by
-`agentTargetId`. Provider-catalog artwork is only for legacy built-in sessions.
-Prefer a transparent background for the canonical icon. It lets Tutti reuse the
-same signed asset in color surfaces and monochrome mask surfaces without
-turning an opaque square or rounded rectangle into the visible mark. Use an
-opaque icon only when the brand identity itself requires that shape.
+Package `icon` is the transparent mask-safe glyph used by monochrome
+conversation rows. Optional package `sidebarIcon` is the colored primary
+identity. When both exist, desktop projection promotes `sidebarIcon` to primary
+`iconUrl`, preserves package `icon` as `maskIconUrl`, and may retain
+`sidebarIconUrl` for rail chrome. Agent selection, conversation identity,
+Message Center, and mentions use the colored primary identity; conversation
+rows consume `maskIconUrl`. Every surface resolves the Target by
+`agentTargetId`; do not add provider-specific catalogs.
 
 Compose the poster so its identity survives the carousel's perspective and
 downscaling: use a clear focal subject, strong contrast, and safe margins. Do
@@ -176,9 +206,20 @@ not bake mutable CDN URLs into the manifest.
 
 ## Tool and capability profiles
 
-Tool profiles map Agent tool names to canonical semantics and may declare safe
-aliases. Capability profiles declare what the extension understands; runtime
+Tool profiles match runtime IDs through `match.ids`, map them to a
+`canonicalId`, and may add category, presentation, diff, or command extraction
+metadata. Capability profiles declare what the extension understands; runtime
 negotiation still determines what is available for a session.
+
+Composer profiles may declare `configOptions.model`, `permission`, and
+`reasoning` references using each provider-native `acpOptionId`. Keep the older
+model/mode source declarations only when they accurately map to the standard
+ACP aliases. Permission semantics include `read-only`, `ask-before-write`,
+`accept-edits`, `auto`, `locked-down`, and `full-access`.
+
+Signed `slashCommands` may narrow a provider-advertised command catalog and
+attach shared effects: `submitImmediate`, `showStatus`, `activateGoalMode`, or
+`togglePlanMode`. Do not invent a provider-specific renderer command policy.
 
 Do not make React infer tool categories, file changes, approvals, or diff
 semantics from provider names.
@@ -187,15 +228,19 @@ semantics from provider names.
 
 - All referenced paths stay inside the package root.
 - References exist and carry the expected schema versions.
-- Icon and `heroImage` are supported local image assets no larger than 256 KiB;
-  SVG content is passive and self-contained.
+- `icon`, optional `sidebarIcon`, and `heroImage` are supported local image
+  assets no larger than 256 KiB; SVG content is passive and self-contained.
 - No symlinks, executable non-directory files, hidden runtime scripts, or Agent
   executables.
-- Runtime npm, pnpm, and uv package versions are exact, not tags or ranges.
+- Runtime npm/pnpm packages are scoped and exactly pinned; uv packages are
+  exactly pinned. Install argv uses the constrained runner form, never a shell,
+  project root, or global install.
 - Discovery has at least one bounded `acp-initialize` candidate with safe
   binary names and explicit launch/version arguments.
-- Composer model and permission sources use ACP session state; Skill roots are
-  safe relative workspace/user paths and agree with the capability profile.
+- Tool mappings use `match.ids` plus `canonicalId`; composer config option IDs,
+  permission semantics, command effects, and Skill invocation are validated.
+  Skill roots are safe relative workspace/user paths and agree with capability
+  metadata.
 - JSON files parse and locale files contain the required presentation keys.
 - The packaged directory is produced from source, not published by zipping the
   repository root.

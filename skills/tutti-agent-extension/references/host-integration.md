@@ -28,15 +28,21 @@ At daemon startup or refresh:
 5. Atomically switch `active.json`.
 6. Register a system Target such as `extension:example` with an
    `agent_extension` launch ref fixed to the verified installation.
-7. Cache the signed icon and optional home poster as safe data URLs; project
-   them through Target `iconUrl` and `heroImageUrl`. Agent selection,
-   conversation rows, Message Center, and mentions resolve the icon from each
-   session's `agentTargetId`. The renderer does not add extension-specific icon
-   catalogs or provider branches; provider-catalog icons are only a legacy
-   compatibility path when a session has no resolvable Target.
+7. Cache signed `icon`, optional `sidebarIcon`, and optional `heroImage` as safe
+   data URLs. For extension presentation, promote `sidebarIcon` to the colored
+   primary `iconUrl` and preserve package `icon` as `maskIconUrl` for
+   conversation rows. Carry `maskIconUrl` through desktop contracts, window
+   intents, GUI normalization, presentation contexts, and memo keys. Every
+   surface resolves by `agentTargetId`; provider catalogs remain legacy-only.
 
 Disabled sources make no network request and remove their system Target.
 Failed refreshes retain a previously verified active installation.
+
+In development only, a generic
+`TUTTI_AGENT_EXTENSION_<KEY>_PACKAGE_DIR` override may select an unpacked
+package. Apply normal package validation, copy it into immutable daemon state,
+and assign a content-addressed synthetic version. Never execute from the
+mutable source directory, and ignore the override in production.
 
 ## Runtime resolution
 
@@ -53,24 +59,29 @@ Sessions persist `agentTargetId`; resume re-derives the same fixed extension.
 
 ## Setup lifecycle
 
-Extension setup is Target-owned daemon state. The desktop host may expose a
-small user-confirmed API such as "install pinned runtime" or "open auth
-instructions", but the daemon owns action validation, execution, persistence,
-and status projection.
+Extension setup is Target-owned daemon state. Expose Target-scoped setup read,
+install, and authenticate APIs. Install submission contains only the
+daemon-issued plan digest plus an idempotent client action ID; renderer input
+cannot replace runner, argv, package, executable, root, or platform.
 
 Model setup state explicitly:
 
-- durable installed-package and setup-action records keyed by workspace,
-  project root, Target, extension version, runtime source, and runtime
-  fingerprint;
+- a runtime identity derived from Agent key, platform, exact package,
+  install/launch argv, executable, and discovery profile;
+- a stable user-local runtime root shared across workspaces, while setup action
+  records stay scoped to workspace, Target, and fixed extension installation;
 - idempotent action requests with visible success/failure state;
+- local-first discovery, safe staging, version plus ACP probes, atomic
+  activation, executable fingerprinting, and explicit reinstall on integrity
+  failure;
+- runtime-advertised authentication methods and durable non-secret outcomes;
 - DTO projection from daemon state to desktop settings and Agent GUI setup
   gates;
 - no provider-name shortcuts and no renderer-only readiness flags.
 
 Use the built-in managed-environment service only for built-in providers it
 owns. For extension Targets, show setup controls from the Target lifecycle and
-the signed package contract.
+the signed package contract. Setup never requires or modifies a project.
 
 ## Composer projection
 
@@ -83,11 +94,15 @@ For standard ACP:
 - `session/new.models.availableModels` becomes the shared model config option;
 - `models.currentModelId` becomes current/default selection;
 - legacy session `configOptions` continues to work;
+- signed `configOptions.model|permission|reasoning.acpOptionId` references map
+  provider-native option IDs to shared typed controls;
 - `session/set_model` applies model changes when the models API is present;
 - ACP modes map through signed semantic permission mappings;
 - hidden discovery sessions use a daemon-managed CWD.
 - provider-advertised commands are persisted in detailed runtime context and
   restored through composer options when a transient engine event was missed;
+- signed `slashCommands` may narrow the runtime catalog and attach shared
+  effects such as submit, status, goal, or plan-mode actions;
 - signed extension Skill roots drive discovery for open providers.
 
 The selected extension model must survive service validation, runtime
@@ -130,3 +145,7 @@ Agent GUI consumes Targets, composer contracts, and canonical activity. It may
 render signed Target presentation but does not add provider-specific product
 logic. The built-in managed-environment wizard is visible only for built-in
 desktop-managed providers; extension readiness belongs to Target lifecycle.
+Target selection does not auto-open setup. Initial checking is non-modal,
+non-ready state exposes an inline affordance, and only explicit user action
+opens the controlled dialog. Keep the dialog mounted through close and ready
+transitions so overlay locks clean up.

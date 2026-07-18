@@ -7,7 +7,7 @@ chain:
 
 ```text
 trusted source -> release reconcile -> verified installation -> Agent Target
--> runtime discovery -> ACP session/new -> composer/session state
+-> setup/install/auth -> runtime discovery -> ACP session/new -> composer/session state
 -> ACP session/prompt -> normalized activity -> persisted lifecycle -> GUI
 ```
 
@@ -68,8 +68,22 @@ kind, not by provider-name exceptions.
 
 If the UI shows extension setup but actions disappear after refresh, inspect the
 daemon setup store and DTO projection before changing React state. Runtime
-install/auth/setup actions should be durable daemon facts keyed by Target and
-extension version, not transient renderer flags.
+install/auth/setup actions should be durable daemon facts keyed by workspace,
+Target, and fixed extension installation. Runtime files use a project-neutral
+runtime identity and may be reused across workspaces; setup must never depend
+on or mutate the selected project.
+
+### Colored square or blank conversation-row icon
+
+Inspect the signed package and presentation projection separately. Package
+`icon` must be a transparent mask-safe glyph. Optional `sidebarIcon` is the
+colored primary identity. When both exist, desktop projection exposes the
+colored asset as primary `iconUrl` and the package glyph as `maskIconUrl`.
+
+Trace `maskIconUrl` through Target mapping, desktop contracts, window intent,
+Agent GUI normalization, presentation context, and memo/cache keys. A unit test
+that injects `maskIconUrl` directly into context does not prove production
+plumbing. Missing projection may silently feed colored artwork into a CSS mask.
 
 ### Typing `/` shows no commands or Skills
 

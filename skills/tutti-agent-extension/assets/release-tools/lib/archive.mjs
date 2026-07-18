@@ -1,5 +1,5 @@
 import { spawnSync } from "node:child_process";
-import { cp, mkdtemp, readdir, rm, utimes } from "node:fs/promises";
+import { chmod, cp, mkdtemp, readdir, rm, utimes } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import path from "node:path";
 
@@ -38,11 +38,14 @@ async function normalizeEntries(rootDir, relativeDir = "") {
     }
     const relativePath = path.join(relativeDir, entry.name);
     const absolutePath = path.join(rootDir, relativePath);
-    await utimes(absolutePath, fixedTimestamp, fixedTimestamp);
     if (entry.isDirectory()) {
+      await chmod(absolutePath, 0o755);
+      await utimes(absolutePath, fixedTimestamp, fixedTimestamp);
       result.push(`${relativePath}/`);
       result.push(...(await normalizeEntries(rootDir, relativePath)));
     } else if (entry.isFile()) {
+      await chmod(absolutePath, 0o644);
+      await utimes(absolutePath, fixedTimestamp, fixedTimestamp);
       result.push(relativePath);
     } else {
       throw new Error(`unsupported package entry type: ${relativePath}`);

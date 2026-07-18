@@ -5,6 +5,7 @@ import { tmpdir } from "node:os";
 import path from "node:path";
 import test from "node:test";
 
+import { validatePackage } from "../lib/manifest.mjs";
 import { buildRelease } from "../lib/release.mjs";
 import { verifyRelease } from "../lib/verify.mjs";
 
@@ -72,6 +73,22 @@ test("rejects executable package content", async () => {
   );
 });
 
+test("validates the signed sidebar identity asset", async () => {
+  const root = await mkdtemp(
+    path.join(tmpdir(), "agent-extension-release-test-")
+  );
+  const packageDir = await writeFixture(path.join(root, "package"));
+  await validatePackage(packageDir, "gemini");
+  await writeFile(
+    path.join(packageDir, "assets", "sidebar-icon.svg"),
+    '<svg xmlns="http://www.w3.org/2000/svg"><script>alert(1)</script></svg>\n'
+  );
+  await assert.rejects(
+    validatePackage(packageDir, "gemini"),
+    /active or remote content/u
+  );
+});
+
 async function writeFixture(packageDir) {
   await mkdir(path.join(packageDir, "profiles"), { recursive: true });
   await mkdir(path.join(packageDir, "assets"), { recursive: true });
@@ -85,6 +102,7 @@ async function writeFixture(packageDir) {
         version: "1.0.0",
         name: "Gemini CLI",
         icon: { type: "asset", src: "assets/icon.svg" },
+        sidebarIcon: { type: "asset", src: "assets/sidebar-icon.svg" },
         heroImage: { type: "asset", src: "assets/hero-image.jpg" },
         runtime: {
           kind: "standard-acp",
@@ -122,6 +140,10 @@ async function writeFixture(packageDir) {
       "PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciLz4K",
       "base64"
     )
+  );
+  await writeFile(
+    path.join(packageDir, "assets", "sidebar-icon.svg"),
+    '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64"><circle cx="32" cy="32" r="24"/></svg>\n'
   );
   await writeFile(
     path.join(packageDir, "assets", "hero-image.jpg"),

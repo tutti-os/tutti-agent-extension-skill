@@ -45,8 +45,10 @@ Confirm these before implementation:
    metadata and never authorizes a launch by itself.
 3. The daemon resolves a signed, fixed `agent_extension` Target before it
    accepts an open provider ID.
-4. Runtime discovery prefers a compatible user-local binary. Project runtime
-   installation requires an explicit user-confirmed host API.
+4. Runtime discovery prefers a compatible user-local binary. Fallback install
+   is an explicit user-confirmed Target action into a project-neutral,
+   user-local Tutti runtime root. It never mutates a project or global package
+   state, and compatible runtime identities may be reused across workspaces.
 5. Raw ACP output becomes canonical Agent Activity before persistence. React
    code does not infer tools, diffs, errors, or lifecycle by provider name.
 6. Model and permission catalogs come from ACP session state or declarative
@@ -74,6 +76,7 @@ or provider-specific patch.
      --runtime-package @vendor/example-cli@1.2.3 \
      --binary example \
      --version-constraint '>=1.2.3 <2.0.0' \
+     --sidebar-icon /path/to/example-agent-color-icon.svg \
      --hero-image /path/to/example-agent-poster.jpg \
      --signing-key-id tutti-example-release-v1 \
      --release-assets-base-url https://cdn.example/tutti-agent-releases
@@ -84,15 +87,14 @@ or provider-specific patch.
    `package==version`. Set `--runtime-executable` only when the executable is
    still below `${installRoot}` but does not use the generated runner default.
 
-3. Replace the generated manifest `icon` with the Agent's primary identity
-   artwork and provide a branded home poster through `heroImage`. Keep the
-   canonical icon background transparent unless the brand explicitly requires
-   an opaque shape; monochrome mask surfaces otherwise collapse the mark into a
-   solid block. The same signed `icon` must project through the Agent Target to
-   selectors, conversation rows, Message Center, and mentions; do not create a
-   second provider-specific renderer icon catalog. Keep each presentation asset
-   at or below 256 KiB and package it locally so Tutti can cache verified bytes
-   instead of loading a mutable third-party URL.
+3. Replace the generated manifest `icon` with a transparent mask-safe glyph,
+   optionally provide colored identity artwork through `sidebarIcon`, and add a
+   branded home poster through `heroImage`. When `sidebarIcon` exists, the host
+   promotes it to primary identity surfaces and keeps `icon` as the
+   conversation-row mask through `maskIconUrl`. Carry all three fields through
+   Target, desktop, intent, Agent GUI presentation context, and memo keys; do
+   not add a provider-specific renderer catalog. Keep each asset at or below
+   256 KiB and package verified local bytes instead of mutable URLs.
 4. Edit `extension/tutti.agent.json` and referenced profiles. Keep install
    packages exactly pinned and use only the constrained `${installRoot}`
    placeholder. If the Agent supports Skills, declare safe workspace/user Skill
@@ -128,24 +130,32 @@ example, not as a source of Gemini-specific host behavior.
    across generated clients, desktop contracts, workbench state, and Agent GUI.
 3. Add the trusted source to runtime defaults with key, release index URL,
    signing key ID, and a disabled-by-default gate. Document its env override.
+   In development, support only the generic
+   `TUTTI_AGENT_EXTENSION_<KEY>_PACKAGE_DIR` package snapshot override; validate
+   and copy it into daemon-owned immutable state instead of running in place.
 4. Reconcile the release index in the daemon: select compatibility, verify
    signature/digest/size, extract safely to staging, validate the package, and
    atomically activate it. Preserve the last verified installation offline.
 5. Register a system Agent Target whose launch reference fixes the extension
-   installation version. Use the cached signed icon and localized metadata,
-   and resolve every Agent/session avatar from `agentTargetId` so open provider
-   IDs do not depend on built-in renderer catalogs.
+   installation version. Project `sidebarIcon` as the colored primary identity
+   and `icon` as the optional mask-safe `maskIconUrl`; resolve every surface
+   from `agentTargetId` so open providers do not need renderer catalogs. Include
+   all presentation fields in adapter projections and memo/cache identities.
 6. Resolve the executable through the declarative discovery profile and the
    shared command resolver. Start the generic standard ACP adapter; never add
    a provider-specific adapter for a standard ACP Agent.
 7. Project ACP session state:
    - normalize standard `models` and legacy `configOptions` into the shared
      composer model descriptor;
+   - use signed `configOptions.*.acpOptionId` references for provider-native
+     model, permission, and reasoning controls when their runtime IDs differ;
    - map ACP runtime permission mode IDs to Tutti semantic permission tiers;
    - use a daemon-managed discovery CWD for no-project composer probes;
    - preserve target-authorized model selections through launch validation.
    - persist detailed provider-advertised command catalogs and restore them in
      composer options after renderer or daemon restarts;
+   - apply signed `slashCommands` catalog narrowing and shared effects without
+     provider-name branches;
    - discover extension Skills only from the signed composer profile; open
      extension commands remain visible even without a built-in slash policy.
 8. Normalize ACP content, tool calls, diffs, notices, visible errors, and
@@ -154,13 +164,14 @@ example, not as a source of Gemini-specific host behavior.
    snapshots. A terminal failure must atomically settle the turn, clear
    `activeTurnId`, persist the error, and unblock submission.
 10. Keep environment management ownership clear: extension readiness belongs
-    to the Agent Target lifecycle. Project runtime install, auth prompts, and
-    other setup actions must flow through explicit user-confirmed host APIs and
-    durable daemon setup state. Do not show the built-in managed-environment
-    wizard for extension Targets.
-11. Store extension installation/setup state in daemon-owned durable data, not
-    renderer memory. API responses should project DTOs from daemon state so
-    desktop UI cannot become the second source of lifecycle truth.
+    to the Agent Target lifecycle. The daemon issues an install plan/digest,
+    installs into a runtime-identity root only after confirmation, persists
+    idempotent install/auth actions, and never requires a selected project. Do
+    not show the built-in managed-environment wizard for extension Targets.
+11. Store setup actions and auth outcomes in daemon-owned durable data, not
+    renderer memory. Target selection must not auto-open setup; show an inline
+    non-ready affordance, open the controlled dialog only after explicit user
+    action, and keep it mounted through close/ready transitions.
 12. Add focused tests at each boundary, then run the validation lanes listed in
     `references/implementation-map.md`.
 
