@@ -80,6 +80,15 @@ Publish in this order:
 5. Update `latest.json` from the active record.
 6. Invalidate only mutable CloudFront paths when required.
 
+The workflow requires `min_tutti_version`. Set it to the oldest Tutti version
+actually verified against the package contract. A manifest contract bump must
+not keep the previous broad compatibility floor by default.
+
+Existing `versions.json` files may contain signed Manifest v1 releases. Preserve
+those immutable historical records while validating every newly built release
+against the current Manifest v2 contract. This does not make the Host accept
+Manifest v1 packages again.
+
 Never overwrite an existing version object. Mutable index writers must fail on
 an ETag conflict and retry from freshly read state instead of discarding a
 concurrent release.
