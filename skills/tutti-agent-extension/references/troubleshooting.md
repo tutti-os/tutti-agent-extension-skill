@@ -76,9 +76,8 @@ on or mutate the selected project.
 ### Colored square or blank conversation-row icon
 
 Inspect the signed package and presentation projection separately. Package
-`icon` must be a transparent mask-safe glyph. Optional `sidebarIcon` is the
-colored primary identity. When both exist, desktop projection exposes the
-colored asset as primary `iconUrl` and the package glyph as `maskIconUrl`.
+`icon` must be the primary identity. Optional `maskIcon` must be a transparent
+mask-safe glyph. Desktop projects them directly as `iconUrl` and `maskIconUrl`.
 
 Trace `maskIconUrl` through Target mapping, desktop contracts, window intent,
 Agent GUI normalization, presentation context, and memo/cache keys. A unit test

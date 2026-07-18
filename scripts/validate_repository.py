@@ -156,7 +156,7 @@ def scaffold_repository(
             runner,
             "--version-constraint",
             ">=1.4.2 <2.0.0",
-            "--sidebar-icon",
+            "--mask-icon",
             str(hero_image),
             "--hero-image",
             str(hero_image),
@@ -181,12 +181,12 @@ def validate_scaffolded_repository(output: Path) -> None:
         or not (package / hero_reference).is_file()
     ):
         fail("scaffold did not package and reference the required hero image")
-    sidebar_reference = manifest.get("sidebarIcon", {}).get("src")
+    mask_reference = manifest.get("maskIcon", {}).get("src")
     if (
-        sidebar_reference != "assets/sidebar-icon.svg"
-        or not (package / sidebar_reference).is_file()
+        mask_reference != "assets/mask-icon.svg"
+        or not (package / mask_reference).is_file()
     ):
-        fail("scaffold did not package and reference the sidebar identity icon")
+        fail("scaffold did not package and reference the conversation mask icon")
     for relative in (
         "LICENSE",
         "CONTRIBUTING.md",
@@ -221,18 +221,18 @@ def validate_negative_cases(output: Path) -> None:
     )
     manifest_path.write_text(json.dumps(original_manifest), encoding="utf-8")
 
-    sidebar_path = package / original_manifest["sidebarIcon"]["src"]
-    original_sidebar = sidebar_path.read_text(encoding="utf-8")
-    sidebar_path.write_text(
+    mask_path = package / original_manifest["maskIcon"]["src"]
+    original_mask = mask_path.read_text(encoding="utf-8")
+    mask_path.write_text(
         '<svg xmlns="http://www.w3.org/2000/svg"><script/></svg>',
         encoding="utf-8",
     )
     run_validator(
         package,
         succeeds=False,
-        message="validator accepted active sidebarIcon SVG content",
+        message="validator accepted active maskIcon SVG content",
     )
-    sidebar_path.write_text(original_sidebar, encoding="utf-8")
+    mask_path.write_text(original_mask, encoding="utf-8")
 
     manifest = json.loads(json.dumps(original_manifest))
     manifest["runtime"]["install"]["args"][-1] = "@example/cli@latest"

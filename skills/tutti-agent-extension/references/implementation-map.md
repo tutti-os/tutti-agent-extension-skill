@@ -40,7 +40,7 @@ rg -n 'agent_extension|agentTargetId|AgentTarget' services apps packages
 rg -n 'standard-acp|session/new|availableModels|configOptions' services packages
 rg -n 'activeTurnId|turn\.failed|lifecycle|Planning next moves' services packages apps
 rg -n 'agentExtension|releaseIndexUrl|signingKeyId' config services docs
-rg -n 'sidebarIcon|maskIconUrl|heroImage|heroImageUrl' services packages apps
+rg -n 'maskIcon|maskIconUrl|heroImage|heroImageUrl' services packages apps
 rg -n 'runtimeIdentity|setup/install|setup/authenticate|planDigest' services packages apps
 rg -n 'availableCommands|slashCommands|acpOptionId|composer.*skills' services packages apps
 ```

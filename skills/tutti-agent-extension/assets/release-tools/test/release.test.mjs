@@ -73,14 +73,14 @@ test("rejects executable package content", async () => {
   );
 });
 
-test("validates the signed sidebar identity asset", async () => {
+test("validates the signed conversation mask asset", async () => {
   const root = await mkdtemp(
     path.join(tmpdir(), "agent-extension-release-test-")
   );
   const packageDir = await writeFixture(path.join(root, "package"));
   await validatePackage(packageDir, "gemini");
   await writeFile(
-    path.join(packageDir, "assets", "sidebar-icon.svg"),
+    path.join(packageDir, "assets", "mask-icon.svg"),
     '<svg xmlns="http://www.w3.org/2000/svg"><script>alert(1)</script></svg>\n'
   );
   await assert.rejects(
@@ -97,12 +97,12 @@ async function writeFixture(packageDir) {
     path.join(packageDir, "tutti.agent.json"),
     `${JSON.stringify(
       {
-        schemaVersion: "tutti.agent.manifest.v1",
+        schemaVersion: "tutti.agent.manifest.v2",
         agentKey: "gemini",
         version: "1.0.0",
         name: "Gemini CLI",
         icon: { type: "asset", src: "assets/icon.svg" },
-        sidebarIcon: { type: "asset", src: "assets/sidebar-icon.svg" },
+        maskIcon: { type: "asset", src: "assets/mask-icon.svg" },
         heroImage: { type: "asset", src: "assets/hero-image.jpg" },
         runtime: {
           kind: "standard-acp",
@@ -142,7 +142,7 @@ async function writeFixture(packageDir) {
     )
   );
   await writeFile(
-    path.join(packageDir, "assets", "sidebar-icon.svg"),
+    path.join(packageDir, "assets", "mask-icon.svg"),
     '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64"><circle cx="32" cy="32" r="24"/></svg>\n'
   );
   await writeFile(
