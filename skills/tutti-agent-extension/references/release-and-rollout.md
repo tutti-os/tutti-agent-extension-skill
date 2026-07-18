@@ -43,8 +43,8 @@ package validator. Runtime binaries, executable files, scripts, symlinks, and
 dynamically loaded renderer code are forbidden.
 
 Inspect the packaged manifest and archive before signing: `icon.src`, optional
-`sidebarIcon.src`, and `heroImage.src` must resolve to intended local assets.
-Keep `icon` mask-safe and use `sidebarIcon` for colored identity artwork. A
+`maskIcon.src`, and `heroImage.src` must resolve to intended local assets.
+Keep `icon` as primary identity artwork and `maskIcon` mask-safe. A
 release that omits referenced bytes can produce a broken conversation mask,
 generic identity, or stale home poster even when publication succeeds.
 

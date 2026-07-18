@@ -76,7 +76,7 @@ or provider-specific patch.
      --runtime-package @vendor/example-cli@1.2.3 \
      --binary example \
      --version-constraint '>=1.2.3 <2.0.0' \
-     --sidebar-icon /path/to/example-agent-color-icon.svg \
+     --mask-icon /path/to/example-agent-mask-icon.svg \
      --hero-image /path/to/example-agent-poster.jpg \
      --signing-key-id tutti-example-release-v1 \
      --release-assets-base-url https://cdn.example/tutti-agent-releases
@@ -87,14 +87,13 @@ or provider-specific patch.
    `package==version`. Set `--runtime-executable` only when the executable is
    still below `${installRoot}` but does not use the generated runner default.
 
-3. Replace the generated manifest `icon` with a transparent mask-safe glyph,
-   optionally provide colored identity artwork through `sidebarIcon`, and add a
-   branded home poster through `heroImage`. When `sidebarIcon` exists, the host
-   promotes it to primary identity surfaces and keeps `icon` as the
-   conversation-row mask through `maskIconUrl`. Carry all three fields through
-   Target, desktop, intent, Agent GUI presentation context, and memo keys; do
-   not add a provider-specific renderer catalog. Keep each asset at or below
-   256 KiB and package verified local bytes instead of mutable URLs.
+3. Replace the generated manifest `icon` with colored primary identity artwork,
+   optionally provide a transparent conversation glyph through `maskIcon`, and
+   add a branded home poster through `heroImage`. Carry `iconUrl` and
+   `maskIconUrl` through Target, desktop, intent, Agent GUI presentation
+   context, and memo keys; do not add a provider-specific renderer catalog.
+   Keep each asset at or below 256 KiB and package verified local bytes instead
+   of mutable URLs.
 4. Edit `extension/tutti.agent.json` and referenced profiles. Keep install
    packages exactly pinned and use only the constrained `${installRoot}`
    placeholder. If the Agent supports Skills, declare safe workspace/user Skill
@@ -137,10 +136,10 @@ example, not as a source of Gemini-specific host behavior.
    signature/digest/size, extract safely to staging, validate the package, and
    atomically activate it. Preserve the last verified installation offline.
 5. Register a system Agent Target whose launch reference fixes the extension
-   installation version. Project `sidebarIcon` as the colored primary identity
-   and `icon` as the optional mask-safe `maskIconUrl`; resolve every surface
-   from `agentTargetId` so open providers do not need renderer catalogs. Include
-   all presentation fields in adapter projections and memo/cache identities.
+   installation version. Project `icon` as the primary `iconUrl` and optional
+   `maskIcon` as `maskIconUrl`; resolve every surface from `agentTargetId` so
+   open providers do not need renderer catalogs. Include both presentation
+   fields in adapter projections and memo/cache identities.
 6. Resolve the executable through the declarative discovery profile and the
    shared command resolver. Start the generic standard ACP adapter; never add
    a provider-specific adapter for a standard ACP Agent.

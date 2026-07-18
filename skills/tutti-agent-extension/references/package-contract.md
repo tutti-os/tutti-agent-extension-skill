@@ -7,7 +7,7 @@ extension/
   tutti.agent.json
   AGENTS.md
   assets/icon.svg
-  assets/sidebar-icon.svg
+  assets/mask-icon.svg
   assets/hero-image.jpg
   locales/en.json
   locales/zh-CN.json
@@ -22,12 +22,11 @@ runtime only when referenced by the signed manifest.
 
 ## Manifest
 
-Use `tutti.agent.manifest.v1` with:
+Use `tutti.agent.manifest.v2` with:
 
 - stable `agentKey`, semantic `version`, display name and description;
-- an extension-local non-executable mask-safe `icon` for conversation rows;
-- optional colored identity artwork referenced by `sidebarIcon` and promoted
-  by the host to Agent selection, Message Center, mentions, and rail surfaces;
+- an extension-local non-executable primary identity referenced by `icon`;
+- an optional mask-safe conversation glyph referenced by `maskIcon`;
 - an extension-local non-executable home poster referenced by `heroImage`;
 - `runtime.kind: standard-acp`;
 - an exact runtime package version for the future explicit installation path;
@@ -38,13 +37,13 @@ Example:
 
 ```json
 {
-  "schemaVersion": "tutti.agent.manifest.v1",
+  "schemaVersion": "tutti.agent.manifest.v2",
   "agentKey": "example",
   "version": "1.0.0",
   "name": "Example CLI",
   "description": "Example CLI through the Agent Client Protocol",
   "icon": { "type": "asset", "src": "assets/icon.svg" },
-  "sidebarIcon": { "type": "asset", "src": "assets/sidebar-icon.svg" },
+  "maskIcon": { "type": "asset", "src": "assets/mask-icon.svg" },
   "heroImage": { "type": "asset", "src": "assets/hero-image.jpg" },
   "runtime": {
     "kind": "standard-acp",
@@ -185,20 +184,18 @@ flag to `true`; otherwise the signed package contradicts its composer profile.
 
 ## Presentation assets
 
-The host contract permits absent `sidebarIcon` and `heroImage`, but a
+The host contract permits absent `maskIcon` and `heroImage`, but a
 publish-ready Agent should normally provide both. Keep every presentation asset
 inside the signed package, at or below 256 KiB, with a supported image
 extension. SVG assets must not contain scripts, event handlers,
 `foreignObject`, animation, or remote references.
 
-Package `icon` is the transparent mask-safe glyph used by monochrome
-conversation rows. Optional package `sidebarIcon` is the colored primary
-identity. When both exist, desktop projection promotes `sidebarIcon` to primary
-`iconUrl`, preserves package `icon` as `maskIconUrl`, and may retain
-`sidebarIconUrl` for rail chrome. Agent selection, conversation identity,
-Message Center, and mentions use the colored primary identity; conversation
-rows consume `maskIconUrl`. Every surface resolves the Target by
-`agentTargetId`; do not add provider-specific catalogs.
+Package `icon` is the primary identity used by Agent selection, Provider Rail,
+conversation identity, Message Center, and mentions. Optional package
+`maskIcon` is the transparent mask-safe glyph used by monochrome conversation
+rows. The host projects them directly as `iconUrl` and `maskIconUrl`. Every
+surface resolves the Target by `agentTargetId`; do not add provider-specific
+catalogs.
 
 Compose the poster so its identity survives the carousel's perspective and
 downscaling: use a clear focal subject, strong contrast, and safe margins. Do
@@ -228,7 +225,7 @@ semantics from provider names.
 
 - All referenced paths stay inside the package root.
 - References exist and carry the expected schema versions.
-- `icon`, optional `sidebarIcon`, and `heroImage` are supported local image
+- `icon`, optional `maskIcon`, and `heroImage` are supported local image
   assets no larger than 256 KiB; SVG content is passive and self-contained.
 - No symlinks, executable non-directory files, hidden runtime scripts, or Agent
   executables.

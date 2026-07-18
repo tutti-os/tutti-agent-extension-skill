@@ -28,10 +28,9 @@ At daemon startup or refresh:
 5. Atomically switch `active.json`.
 6. Register a system Target such as `extension:example` with an
    `agent_extension` launch ref fixed to the verified installation.
-7. Cache signed `icon`, optional `sidebarIcon`, and optional `heroImage` as safe
-   data URLs. For extension presentation, promote `sidebarIcon` to the colored
-   primary `iconUrl` and preserve package `icon` as `maskIconUrl` for
-   conversation rows. Carry `maskIconUrl` through desktop contracts, window
+7. Cache signed `icon`, optional `maskIcon`, and optional `heroImage` as safe
+   data URLs. Project `icon` directly as primary `iconUrl` and `maskIcon` as
+   `maskIconUrl` for conversation rows. Carry both through desktop contracts, window
    intents, GUI normalization, presentation contexts, and memo keys. Every
    surface resolves by `agentTargetId`; provider catalogs remain legacy-only.
 

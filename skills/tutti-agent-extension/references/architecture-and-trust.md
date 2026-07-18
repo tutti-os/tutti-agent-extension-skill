@@ -93,13 +93,12 @@ or other built-in strategies.
 
 ## Presentation invariants
 
-- Package `icon` is a transparent, mask-safe conversation-row glyph.
-- Optional package `sidebarIcon` is colored identity artwork. When present,
-  desktop projection promotes it to primary `iconUrl` and preserves package
-  `icon` as `maskIconUrl`; rail-specific DTOs may retain `sidebarIconUrl`.
+- Package `icon` is colored primary identity artwork projected as `iconUrl`.
+- Optional package `maskIcon` is a transparent, mask-safe conversation-row
+  glyph projected as `maskIconUrl`.
 - `heroImage` remains home-carousel artwork. All presentation bytes come from
   the verified package and stay pinned to its installation.
-- `iconUrl`, `maskIconUrl`, and `sidebarIconUrl` must survive Target, desktop
+- `iconUrl` and `maskIconUrl` must survive Target, desktop
   contracts, window intents, Agent GUI normalization, presentation contexts,
   and memo/cache keys. Missing one projection must not silently fall back to a
   colored image in a monochrome mask.

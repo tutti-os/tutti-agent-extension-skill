@@ -40,8 +40,8 @@ def hero_image_asset_path(args: argparse.Namespace) -> str:
     return f"assets/hero-image{args.hero_image.suffix.lower()}"
 
 
-def sidebar_icon_asset_path(args: argparse.Namespace) -> str:
-    return f"assets/sidebar-icon{args.sidebar_icon.suffix.lower()}"
+def mask_icon_asset_path(args: argparse.Namespace) -> str:
+    return f"assets/mask-icon{args.mask_icon.suffix.lower()}"
 
 
 def runtime_install_args(args: argparse.Namespace) -> list[str]:
@@ -92,22 +92,22 @@ def validate_args(args: argparse.Namespace) -> None:
         raise SystemExit("--hero-image must be JPEG, PNG, SVG, or WebP")
     if args.hero_image.stat().st_size > PRESENTATION_ASSET_LIMIT:
         raise SystemExit("--hero-image must not exceed 256 KiB")
-    if args.sidebar_icon is not None:
-        if not args.sidebar_icon.is_file():
+    if args.mask_icon is not None:
+        if not args.mask_icon.is_file():
             raise SystemExit(
-                f"--sidebar-icon must be an existing file: {args.sidebar_icon}"
+                f"--mask-icon must be an existing file: {args.mask_icon}"
             )
-        if args.sidebar_icon.suffix.lower() not in PRESENTATION_ASSET_SUFFIXES:
-            raise SystemExit("--sidebar-icon must be JPEG, PNG, SVG, or WebP")
-        if args.sidebar_icon.stat().st_size > PRESENTATION_ASSET_LIMIT:
-            raise SystemExit("--sidebar-icon must not exceed 256 KiB")
+        if args.mask_icon.suffix.lower() not in PRESENTATION_ASSET_SUFFIXES:
+            raise SystemExit("--mask-icon must be JPEG, PNG, SVG, or WebP")
+        if args.mask_icon.stat().st_size > PRESENTATION_ASSET_LIMIT:
+            raise SystemExit("--mask-icon must not exceed 256 KiB")
     if args.output.exists() and any(args.output.iterdir()):
         raise SystemExit(f"output directory is not empty: {args.output}")
 
 
 def manifest(args: argparse.Namespace) -> dict[str, Any]:
     value = {
-        "schemaVersion": "tutti.agent.manifest.v1",
+        "schemaVersion": "tutti.agent.manifest.v2",
         "agentKey": args.agent_key,
         "version": args.extension_version,
         "name": args.display_name,
@@ -137,10 +137,10 @@ def manifest(args: argparse.Namespace) -> dict[str, Any]:
             "additionalLocales": [{"locale": "zh-CN", "file": "locales/zh-CN.json"}],
         },
     }
-    if args.sidebar_icon is not None:
-        value["sidebarIcon"] = {
+    if args.mask_icon is not None:
+        value["maskIcon"] = {
             "type": "asset",
-            "src": sidebar_icon_asset_path(args),
+            "src": mask_icon_asset_path(args),
         }
     return value
 
@@ -174,11 +174,9 @@ def create(args: argparse.Namespace) -> None:
         "Verify the real ACP runtime without sending a paid prompt:\n\n"
         f"```sh\npython3 scripts/probe_acp_runtime.py --cwd /path/to/project -- {args.binary} "
         f"{' '.join(args.launch_arg)}\n```\n\n"
-        "The signed manifest references a transparent conversation-mask glyph through "
-        "`icon`, optional colored identity artwork through `sidebarIcon`, and the home "
-        "poster through `heroImage`. Tutti promotes the colored identity to selectors, "
-        "Message Center, mentions, and rail surfaces while preserving the mask glyph for "
-        "conversation rows. Keep each packaged image at or below 256 KiB.\n\n"
+        "The signed manifest references colored primary identity artwork through `icon`, "
+        "an optional transparent conversation-mask glyph through `maskIcon`, and the home "
+        "poster through `heroImage`. Keep each packaged image at or below 256 KiB.\n\n"
         "## Release\n\nThe repository-owned `.github/workflows/release.yml` builds, "
         "signs, and uploads immutable releases using `scripts/release/`. Configure "
         "the documented GitHub OIDC/AWS variables and the "
@@ -319,9 +317,9 @@ def create(args: argparse.Namespace) -> None:
     hero_target = root / "extension" / hero_image_asset_path(args)
     hero_target.parent.mkdir(parents=True, exist_ok=True)
     hero_target.write_bytes(args.hero_image.read_bytes())
-    if args.sidebar_icon is not None:
-        sidebar_target = root / "extension" / sidebar_icon_asset_path(args)
-        sidebar_target.write_bytes(args.sidebar_icon.read_bytes())
+    if args.mask_icon is not None:
+        mask_target = root / "extension" / mask_icon_asset_path(args)
+        mask_target.write_bytes(args.mask_icon.read_bytes())
     write(
         root,
         "scripts/check.mjs",
@@ -332,7 +330,7 @@ def create(args: argparse.Namespace) -> None:
         "execFileSync(process.execPath, [path.join(root, 'scripts', 'package.mjs')], { stdio: 'inherit' });\n"
         "const packageDir = path.join(root, 'build', 'tutti-agent', 'package');\n"
         "const manifest = JSON.parse(await readFile(path.join(packageDir, 'tutti.agent.json'), 'utf8'));\n"
-        f"if (manifest.schemaVersion !== 'tutti.agent.manifest.v1' || manifest.agentKey !== '{args.agent_key}') throw new Error('invalid manifest identity');\n"
+        f"if (manifest.schemaVersion !== 'tutti.agent.manifest.v2' || manifest.agentKey !== '{args.agent_key}') throw new Error('invalid manifest identity');\n"
         "await rejectExecutables(packageDir);\n"
         "async function rejectExecutables(directory) {\n"
         "  for (const entry of await readdir(directory, { withFileTypes: true })) {\n"
@@ -408,7 +406,7 @@ def main() -> int:
     parser.add_argument("--signing-key-id", required=True)
     parser.add_argument("--release-assets-base-url", required=True)
     parser.add_argument("--hero-image", required=True, type=Path)
-    parser.add_argument("--sidebar-icon", type=Path)
+    parser.add_argument("--mask-icon", type=Path)
     parser.add_argument(
         "--description", default="External Agent for Tutti through standard ACP"
     )
